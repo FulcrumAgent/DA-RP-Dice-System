@@ -239,6 +239,7 @@ export async function handleServerSetupCommand(interaction: CommandInteraction):
       forumCreated: false,
       postsCreated: 0,
       channelsCreated: 0,
+      categoryCreated: false,
       errors: [] as string[]
     };
 
@@ -255,7 +256,28 @@ export async function handleServerSetupCommand(interaction: CommandInteraction):
       return;
     }
 
-    // 1. Create or find documentation forum
+    // 1. Create or find category first
+    let duneCategory = guild.channels.cache.find(
+      channel => channel.name === 'Dune: Awakened Adventures' && channel.type === ChannelType.GuildCategory
+    ) as CategoryChannel;
+
+    if (!duneCategory) {
+      try {
+        duneCategory = await guild.channels.create({
+          name: 'Dune: Awakened Adventures',
+          type: ChannelType.GuildCategory,
+          reason: 'Server setup - creating Dune category'
+        });
+        results.categoryCreated = true;
+        logger.info(`Created category: Dune: Awakened Adventures in ${guild.name}`);
+      } catch (error) {
+        const errorMsg = `Failed to create category: ${error}`;
+        results.errors.push(errorMsg);
+        logger.error(errorMsg);
+      }
+    }
+
+    // 2. Create or find documentation forum
     let documentationForum = guild.channels.cache.find(
       channel => channel.name === 'documentation' && channel.type === ChannelType.GuildForum
     ) as ForumChannel;
@@ -266,6 +288,7 @@ export async function handleServerSetupCommand(interaction: CommandInteraction):
           name: 'documentation',
           type: ChannelType.GuildForum,
           topic: 'Server documentation and guides for Dune: Awakened Adventures',
+          parent: duneCategory?.id, // Assign to category
           reason: 'Server setup - creating documentation forum'
         });
         results.forumCreated = true;
@@ -275,9 +298,19 @@ export async function handleServerSetupCommand(interaction: CommandInteraction):
         results.errors.push(errorMsg);
         logger.error(errorMsg);
       }
+    } else if (duneCategory && documentationForum.parentId !== duneCategory.id) {
+      // Move existing forum to category if not already there
+      try {
+        await documentationForum.setParent(duneCategory.id, { reason: 'Server setup - organizing channels' });
+        logger.info(`Moved documentation forum to Dune category in ${guild.name}`);
+      } catch (error) {
+        const errorMsg = `Failed to move documentation forum to category: ${error}`;
+        results.errors.push(errorMsg);
+        logger.error(errorMsg);
+      }
     }
 
-    // 2. Create forum posts if forum exists
+    // 3. Create forum posts if forum exists
     if (documentationForum) {
       for (const [postKey, template] of Object.entries(FORUM_POST_TEMPLATES)) {
         try {
@@ -310,7 +343,7 @@ export async function handleServerSetupCommand(interaction: CommandInteraction):
       }
     }
 
-    // 3. Create text channels
+    // 4. Create text channels and assign to category
     for (const channelConfig of TEXT_CHANNELS) {
       try {
         // Check if channel already exists
@@ -323,20 +356,31 @@ export async function handleServerSetupCommand(interaction: CommandInteraction):
             name: channelConfig.name,
             type: ChannelType.GuildText,
             topic: channelConfig.topic,
+            parent: duneCategory?.id, // Assign to category
             reason: 'Server setup - creating standard text channel'
           });
           results.channelsCreated++;
           logger.info(`Created text channel: #${channelConfig.name} in ${guild.name}`);
+        } else if (duneCategory && existingChannel.parentId !== duneCategory.id) {
+          // Move existing channel to category if not already there
+          await (existingChannel as TextChannel).setParent(duneCategory.id, { reason: 'Server setup - organizing channels' });
+          logger.info(`Moved existing channel #${channelConfig.name} to Dune category in ${guild.name}`);
         }
       } catch (error) {
-        const errorMsg = `Failed to create channel "#${channelConfig.name}": ${error}`;
+        const errorMsg = `Failed to create/move channel "#${channelConfig.name}": ${error}`;
         results.errors.push(errorMsg);
         logger.error(errorMsg);
       }
     }
 
-    // 4. Build response message
+
+
+    // 5. Build response message
     let responseMessage = '✅ **Server setup completed!**\n\n';
+    
+    if (results.categoryCreated) {
+      responseMessage += '📁 Created **Dune: Awakened Adventures** category\n';
+    }
     
     if (results.forumCreated) {
       responseMessage += '📁 Created **documentation** forum\n';
