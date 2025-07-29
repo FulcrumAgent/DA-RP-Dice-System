@@ -365,7 +365,7 @@ export class PrismaCharacterManager {
     const assetData = assets.map(asset => ({
       characterId,
       name: asset.name,
-      type: asset.type.toUpperCase() as any, // Convert to enum
+      type: asset.type, // AssetType enum uses lowercase values
       description: asset.description,
       qualities: asset.qualities || [],
       cost: asset.cost,
