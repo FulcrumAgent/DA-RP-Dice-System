@@ -4,7 +4,7 @@
   "description": "A modular Discord bot for Dune: Adventures in the Imperium RPG community with Extra-Life integration",
   "main": "dist/index.js",
   "scripts": {
-    "build": "npx tsc",
+    "build": "node ./node_modules/typescript/bin/tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "dev:watch": "ts-node --watch src/index.ts",
@@ -35,9 +35,9 @@
   "license": "MIT",
   "dependencies": {
     "@prisma/client": "^5.7.1",
+    "axios": "^1.6.2",
     "discord.js": "^14.14.1",
     "dotenv": "^16.3.1",
-    "axios": "^1.6.2",
     "node-cron": "^3.0.3",
     "winston": "^3.11.0"
   },
@@ -50,7 +50,7 @@
     "nodemon": "^3.0.2",
     "prisma": "^5.7.1",
     "ts-node": "^10.9.1",
-    "typescript": "^5.3.3"
+    "typescript": "^5.8.3"
   },
   "engines": {
     "node": ">=18.0.0"
