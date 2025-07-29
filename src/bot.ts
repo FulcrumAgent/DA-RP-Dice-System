@@ -26,6 +26,7 @@ import {
 import { config } from 'dotenv';
 import { logger } from './utils/logger';
 import { DataManager } from './utils/database';
+import * as http from 'http';
 
 
 
@@ -1124,10 +1125,43 @@ class DuneBot {
       // Login to Discord
       await this.client.login(botConfig.discordToken);
       
+      // Start HTTP server for Railway health checks
+      this.startHealthServer();
+      
     } catch (error) {
       logger.error('Failed to start bot:', error);
       throw error;
     }
+  }
+
+  /**
+   * Start a simple HTTP server for Railway health checks
+   */
+  private startHealthServer(): void {
+    const port = process.env.PORT || 3000;
+    
+    const server = http.createServer((req, res) => {
+      if (req.url === '/' || req.url === '/health') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          status: 'healthy',
+          service: 'dune-discord-bot',
+          timestamp: new Date().toISOString(),
+          uptime: process.uptime()
+        }));
+      } else {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('Not Found');
+      }
+    });
+
+    server.listen(port, () => {
+      logger.info(`Health server listening on port ${port}`);
+    });
+
+    server.on('error', (error) => {
+      logger.error('Health server error:', error);
+    });
   }
 
   public getClient(): Client {
