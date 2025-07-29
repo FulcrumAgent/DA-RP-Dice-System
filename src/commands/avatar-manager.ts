@@ -10,7 +10,7 @@ import {
   AutocompleteInteraction,
   AttachmentBuilder
 } from 'discord.js';
-import { characterManager } from '../utils/character-manager';
+import { prismaCharacterManager } from '../utils/prisma-character-manager';
 import { logger } from '../utils/logger';
 
 export const avatarCommand = new SlashCommandBuilder()
@@ -84,7 +84,7 @@ async function handleSetAvatar(interaction: ChatInputCommandInteraction): Promis
 
   try {
     // Validate the image URL
-    const validation = characterManager.validateImageUrl(avatarUrl);
+    const validation = prismaCharacterManager.validateImageUrl(avatarUrl);
     if (!validation.valid) {
       await interaction.reply({
         content: `❌ Invalid image URL: ${validation.error}`,
@@ -94,12 +94,12 @@ async function handleSetAvatar(interaction: ChatInputCommandInteraction): Promis
     }
 
     // Find character or NPC
-    const userCharacters = characterManager.getUserCharacters(userId, guildId);
+    const userCharacters = await prismaCharacterManager.getUserCharacters(userId, guildId);
     const character = userCharacters.find(c => c.name.toLowerCase() === characterName.toLowerCase());
     
     if (character) {
       // Set character avatar
-      const updatedCharacter = await characterManager.setCharacterAvatar(character.id, avatarUrl, userId);
+      const updatedCharacter = await prismaCharacterManager.setCharacterAvatar(character.id, avatarUrl, userId);
       
       const embed = new EmbedBuilder()
         .setTitle('✅ Avatar Set Successfully')
@@ -162,7 +162,7 @@ async function handleRemoveAvatar(interaction: ChatInputCommandInteraction): Pro
 
   try {
     // Find character or NPC
-    const userCharacters = characterManager.getUserCharacters(userId, guildId);
+    const userCharacters = await prismaCharacterManager.getUserCharacters(userId, guildId);
     const character = userCharacters.find(c => c.name.toLowerCase() === characterName.toLowerCase());
     
     if (character) {
@@ -313,7 +313,7 @@ export async function handleAvatarAutocomplete(interaction: AutocompleteInteract
     const choices: { name: string; value: string }[] = [];
 
     // Get user's characters
-    const userCharacters = characterManager.getUserCharacters(userId, guildId);
+    const userCharacters = await prismaCharacterManager.getUserCharacters(userId, guildId);
     for (const character of userCharacters) {
       if (character.name.toLowerCase().includes(focusedValue)) {
         choices.push({
