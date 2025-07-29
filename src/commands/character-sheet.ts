@@ -19,7 +19,7 @@ import {
   ModalSubmitInteraction,
   CommandInteraction
 } from 'discord.js';
-import { characterManager, DuneCharacter } from '../utils/character-manager';
+import { prismaCharacterManager, CharacterWithRelations } from '../utils/prisma-character-manager';
 import { SKILLS } from '../data/skills';
 import { logger } from '../utils/logger';
 
@@ -116,12 +116,12 @@ export async function execute(interaction: CommandInteraction) {
 async function handleCreateCharacter(interaction: ChatInputCommandInteraction, member: GuildMember) {
   try {
     // Check if user already has characters (up to 3 allowed)
-    const userCharacters = characterManager.getUserCharacters(member.id, interaction.guild!.id);
-    logger.info(`Character limit check for user ${member.id}: found ${userCharacters.length} characters:`, userCharacters.map(c => ({ id: c.id, name: c.name, isActive: c.isActive })));
+    const userCharacters = await prismaCharacterManager.getUserCharacters(member.id, interaction.guild!.id);
+    logger.info(`Character limit check for user ${member.id}: found ${userCharacters.length} characters:`, userCharacters.map((c: CharacterWithRelations) => ({ id: c.id, name: c.name, isActive: c.isActive })));
     
     if (userCharacters.length >= 3) {
       await interaction.reply({
-        content: `⚠️ You already have ${userCharacters.length} characters (maximum allowed: 3). Characters found: ${userCharacters.map(c => c.name).join(', ')}. Use \`/sheet delete\` to remove one before creating a new character.`,
+        content: `⚠️ You already have ${userCharacters.length} characters (maximum allowed: 3). Characters found: ${userCharacters.map((c: CharacterWithRelations) => c.name).join(', ')}. Use \`/sheet delete\` to remove one before creating a new character.`,
         ephemeral: true
       });
       return;
@@ -143,21 +143,21 @@ async function handleCreateCharacter(interaction: ChatInputCommandInteraction, m
 async function handleViewCharacter(interaction: ChatInputCommandInteraction, member: GuildMember) {
   try {
     const characterName = interaction.options.getString('character');
-    let targetCharacter: DuneCharacter | null = null;
+    let targetCharacter: CharacterWithRelations | null = null;
     let isOwner = false;
 
     if (characterName) {
       // Find character by name among user's characters
-      const userCharacters = characterManager.getUserCharacters(member.id, interaction.guild!.id);
-      const foundCharacter = userCharacters.find(char => char.name.toLowerCase() === characterName.toLowerCase());
+      const userCharacters = await prismaCharacterManager.getUserCharacters(member.id, interaction.guild!.id);
+      const foundCharacter = userCharacters.find((char: CharacterWithRelations) => char.name.toLowerCase() === characterName.toLowerCase());
       if (foundCharacter) {
         targetCharacter = foundCharacter;
         isOwner = true;
       }
     } else {
       // View user's active character (or first character if no active one)
-      const userCharacters = characterManager.getUserCharacters(member.id, interaction.guild!.id);
-      targetCharacter = characterManager.getUserActiveCharacter(member.id, interaction.guild!.id) || userCharacters[0] || null;
+      const userCharacters = await prismaCharacterManager.getUserCharacters(member.id, interaction.guild!.id);
+      targetCharacter = await prismaCharacterManager.getUserActiveCharacter(member.id, interaction.guild!.id) || userCharacters[0] || null;
       isOwner = true;
     }
 
@@ -184,7 +184,7 @@ async function handleViewCharacter(interaction: ChatInputCommandInteraction, mem
 async function handleEditCharacter(interaction: ChatInputCommandInteraction, member: GuildMember) {
   try {
     const characterName = interaction.options.getString('character', true);
-    const characters = await characterManager.getUserCharacters(member.id, interaction.guildId!);
+    const characters = await prismaCharacterManager.getUserCharacters(member.id, interaction.guildId!);
     
     if (!characters || characters.length === 0) {
       await interaction.reply({
@@ -194,7 +194,7 @@ async function handleEditCharacter(interaction: ChatInputCommandInteraction, mem
       return;
     }
 
-    const character = characters.find(char => char.name.toLowerCase() === characterName.toLowerCase());
+    const character = characters.find((char: CharacterWithRelations) => char.name.toLowerCase() === characterName.toLowerCase());
     if (!character) {
       await interaction.reply({
         content: `❌ Character "${characterName}" not found or you don't own it.`,
@@ -217,8 +217,8 @@ async function handleEditCharacter(interaction: ChatInputCommandInteraction, mem
 async function handleDeleteCharacter(interaction: ChatInputCommandInteraction, member: GuildMember) {
   try {
     const characterName = interaction.options.getString('character', true);
-    const userCharacters = characterManager.getUserCharacters(member.id, interaction.guild!.id);
-    const character = userCharacters.find(char => char.name.toLowerCase() === characterName.toLowerCase());
+    const userCharacters = await prismaCharacterManager.getUserCharacters(member.id, interaction.guild!.id);
+    const character = userCharacters.find((char: CharacterWithRelations) => char.name.toLowerCase() === characterName.toLowerCase());
     
     if (!character) {
       if (userCharacters.length === 0) {
@@ -228,7 +228,7 @@ async function handleDeleteCharacter(interaction: ChatInputCommandInteraction, m
         });
       } else {
         await interaction.reply({
-          content: `❌ Character "${characterName}" not found. Your characters: ${userCharacters.map(c => c.name).join(', ')}.`,
+          content: `❌ Character "${characterName}" not found. Your characters: ${userCharacters.map((c: CharacterWithRelations) => c.name).join(', ')}.`,
           ephemeral: true
         });
       }
@@ -265,7 +265,7 @@ async function handleDeleteCharacter(interaction: ChatInputCommandInteraction, m
  */
 interface EditingSession {
   characterId: string;
-  character: DuneCharacter;
+  character: CharacterWithRelations;
   userId: string;
   guildId: string;
   originalInteraction?: ChatInputCommandInteraction;
@@ -276,7 +276,7 @@ const editingSessions = new Map<string, EditingSession>();
 /**
  * Start character editing session
  */
-async function startCharacterEditing(interaction: ChatInputCommandInteraction, character: DuneCharacter) {
+async function startCharacterEditing(interaction: ChatInputCommandInteraction, character: CharacterWithRelations) {
   const sessionId = `${interaction.user.id}_${interaction.guildId}`;
   
   // Store the editing session
@@ -376,11 +376,11 @@ async function showEditingPanel(interaction: ChatInputCommandInteraction, sessio
 /**
  * Format drives for display
  */
-function formatDrives(character: DuneCharacter): string {
+function formatDrives(character: CharacterWithRelations): string {
   if (!character.drives || character.drives.length === 0) return 'Not set';
   
   const driveEntries = character.drives
-    .map(drive => `${drive.name}: ${drive.value}`)
+    .map((drive: any) => `${drive.name}: ${drive.value}`)
     .join(', ');
   
   return driveEntries || 'Not set';
@@ -389,11 +389,11 @@ function formatDrives(character: DuneCharacter): string {
 /**
  * Format skills for display
  */
-function formatSkills(character: DuneCharacter): string {
+function formatSkills(character: CharacterWithRelations): string {
   if (!character.skills || character.skills.length === 0) return 'Not set';
   
   const skillEntries = character.skills
-    .map(skill => `${skill.name}: ${skill.value}`)
+    .map((skill: any) => `${skill.name}: ${skill.value}`)
     .join(', ');
   
   return skillEntries || 'Not set';
@@ -545,17 +545,31 @@ export async function handleEditingButton(interaction: ButtonInteraction): Promi
       
     case 'save_character': {
       // Save the edited character
-      const characterManager = (await import('../utils/character-manager.js')).characterManager;
-      const success = await characterManager.updateCharacter(session.character.id, session.character);
+      const characterData = {
+        name: session.character.name,
+        concepts: session.character.concepts,
+        house: session.character.house || undefined,
+        homeworld: session.character.homeworld || undefined,
+        avatarUrl: session.character.avatarUrl || undefined,
+        attrMuscle: session.character.attrMuscle,
+        attrMove: session.character.attrMove,
+        attrIntellect: session.character.attrIntellect,
+        attrAwareness: session.character.attrAwareness,
+        attrCommunication: session.character.attrCommunication,
+        attrDiscipline: session.character.attrDiscipline,
+        determination: session.character.determination,
+        maxDetermination: session.character.maxDetermination,
+      };
+      const updatedCharacter = await prismaCharacterManager.updateCharacter(session.character.id, characterData);
       
-      if (success) {
+      if (updatedCharacter) {
         // Clear the editing session
         editingSessions.delete(sessionId);
         
         await interaction.update({
           embeds: [new EmbedBuilder()
             .setTitle('✅ Character Saved')
-            .setDescription(`Successfully saved changes to **${session.character.name}**.`)
+            .setDescription(`Successfully saved changes to **${updatedCharacter.name}**.`)
             .setColor(0x00FF00)
           ],
           components: []
@@ -731,7 +745,7 @@ export async function handleEditingModal(interaction: ModalSubmitInteraction): P
 /**
  * Create character view embed with privacy controls
  */
-function createCharacterViewEmbed(character: DuneCharacter, isOwner: boolean, user?: any): EmbedBuilder {
+function createCharacterViewEmbed(character: CharacterWithRelations, isOwner: boolean, user?: any): EmbedBuilder {
   const embed = new EmbedBuilder()
     .setColor(0xD4AF37)
     .setTitle(`📜 ${character.name}`)
@@ -739,19 +753,19 @@ function createCharacterViewEmbed(character: DuneCharacter, isOwner: boolean, us
 
   // Add character avatar if user is provided
   if (user) {
-    const avatarUrl = characterManager.getAvatarUrl(character, user.displayAvatarURL());
+    const avatarUrl = character.avatarUrl || user.displayAvatarURL();
     embed.setThumbnail(avatarUrl);
   }
 
   // Helper function to get skill value by name
   const getSkillValue = (skillName: string): number => {
-    const skill = character.skills.find(s => s.name.toLowerCase() === skillName.toLowerCase());
+    const skill = character.skills.find((s: any) => s.name.toLowerCase() === skillName.toLowerCase());
     return skill?.value || 0;
   };
 
   // Helper function to get drive value by name
   const getDriveValue = (driveName: string): number => {
-    const drive = character.drives.find(d => d.name.toLowerCase() === driveName.toLowerCase());
+    const drive = character.drives.find((d: any) => d.name.toLowerCase() === driveName.toLowerCase());
     return drive?.value || 0;
   };
 
@@ -773,8 +787,8 @@ function createCharacterViewEmbed(character: DuneCharacter, isOwner: boolean, us
   if (isOwner) {
     // Show skill focuses
     const focusText = character.skills
-      .filter(skill => skill.focus && skill.focus.length > 0)
-      .map(skill => `**${skill.name}:** ${skill.focus!.join(', ')}`)
+      .filter((skill: any) => skill.focus && skill.focus.length > 0)
+      .map((skill: any) => `**${skill.name}:** ${skill.focus!.join(', ')}`)
       .join('\n');
     
     if (focusText) {
@@ -783,20 +797,20 @@ function createCharacterViewEmbed(character: DuneCharacter, isOwner: boolean, us
 
     // Show assets
     if (character.assets && character.assets.length > 0) {
-      const assetText = character.assets.map(asset => `**${asset.name}** (${asset.type})`).join('\n');
+      const assetText = character.assets.map((asset: any) => `**${asset.name}** (${asset.type})`).join('\n');
       embed.addFields({ name: '🎒 Assets', value: assetText, inline: false });
     }
 
     // Show traits
     if (character.traits && character.traits.length > 0) {
-      const traitText = character.traits.map(trait => `**${trait.name}** (${trait.type})`).join('\n');
+      const traitText = character.traits.map((trait: any) => `**${trait.name}** (${trait.type})`).join('\n');
       embed.addFields({ name: '✨ Traits', value: traitText, inline: false });
     }
 
     // Show drive statements
     const statementText = character.drives
-      .filter(drive => drive.statement && drive.statement.trim().length > 0)
-      .map(drive => `**${drive.name}:** "${drive.statement}"`)
+      .filter((drive: any) => drive.statement && drive.statement.trim().length > 0)
+      .map((drive: any) => `**${drive.name}:** "${drive.statement}"`)
       .join('\n');
     
     if (statementText) {

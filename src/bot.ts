@@ -26,6 +26,8 @@ import {
 import { config } from 'dotenv';
 import { logger } from './utils/logger';
 import { DataManager } from './utils/database';
+import { testDatabaseConnection } from './utils/prisma';
+import { prismaCharacterManager } from './utils/prisma-character-manager';
 import * as http from 'http';
 
 
@@ -1124,7 +1126,14 @@ class DuneBot {
     }
 
     try {
-      // Deploy commands first
+      // Test database connection first
+      logger.info('Testing database connection...');
+      const dbConnected = await testDatabaseConnection();
+      if (!dbConnected) {
+        throw new Error('Failed to connect to database');
+      }
+      
+      // Deploy commands
       await this.deployCommands();
       
       // Login to Discord
