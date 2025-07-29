@@ -16,8 +16,40 @@ import {
   ModalSubmitInteraction
 } from 'discord.js';
 import { logger } from '../utils/logger';
-import { prismaCharacterManager, PrismaCharacterManager } from '../utils/prisma-character-manager';
-import { DuneDiceEngine } from '../utils/dune-dice';
+import { prismaCharacterManager, PrismaCharacterManager } from '../utils/prisma-character-manager.js';
+import { DuneDiceEngine } from '../utils/dune-dice.js';
+
+/**
+ * Map internal tier values to official TTRPG display names
+ */
+function getTierDisplayName(tier: string): string {
+  switch (tier) {
+    case 'minion':
+      return 'Supporting Character';
+    case 'toughened':
+      return 'Notable/Elite Supporting Character';
+    case 'nemesis':
+      return 'Adversary';
+    default:
+      return tier;
+  }
+}
+
+/**
+ * Map display names back to internal tier values
+ */
+function getTierInternalValue(displayName: string): string {
+  switch (displayName) {
+    case 'Supporting Character':
+      return 'minion';
+    case 'Notable/Elite Supporting Character':
+      return 'toughened';
+    case 'Adversary':
+      return 'nemesis';
+    default:
+      return displayName.toLowerCase();
+  }
+}
 
 export const data = new SlashCommandBuilder()
   .setName('npc')
@@ -39,9 +71,9 @@ export const data = new SlashCommandBuilder()
           .setDescription('NPC tier')
           .setRequired(true)
           .addChoices(
-            { name: 'Minion', value: 'minion' },
-            { name: 'Toughened', value: 'toughened' },
-            { name: 'Nemesis', value: 'nemesis' }
+            { name: 'Supporting Character', value: 'minion' },
+            { name: 'Notable/Elite Supporting Character', value: 'toughened' },
+            { name: 'Adversary', value: 'nemesis' }
           ))
       .addStringOption(option =>
         option.setName('description')
@@ -56,9 +88,9 @@ export const data = new SlashCommandBuilder()
           .setDescription('NPC tier')
           .setRequired(true)
           .addChoices(
-            { name: 'Minion', value: 'minion' },
-            { name: 'Toughened', value: 'toughened' },
-            { name: 'Nemesis', value: 'nemesis' }
+            { name: 'Supporting Character', value: 'minion' },
+            { name: 'Notable/Elite Supporting Character', value: 'toughened' },
+            { name: 'Adversary', value: 'nemesis' }
           ))
       .addStringOption(option =>
         option.setName('concept')
@@ -441,7 +473,7 @@ async function handleListNPCs(interaction: ChatInputCommandInteraction) {
 
     const npcList = npcs.map((npc: any, index: number) => {
       const tierEmoji = npc.tier === 'nemesis' ? '👑' : npc.tier === 'toughened' ? '🛡️' : '⚔️';
-      return `${index + 1}. ${tierEmoji} **${npc.name}** (${npc.tier}) - *${npc.concepts.join(', ')}*`;
+      return `${index + 1}. ${tierEmoji} **${npc.name}** (${getTierDisplayName(npc.tier)}) - *${npc.concepts.join(', ')}*`;
     }).join('\n');
 
     // Split into chunks if too long
@@ -560,10 +592,10 @@ async function handleEditNPC(interaction: ChatInputCommandInteraction, member: G
       const embed = new EmbedBuilder()
         .setColor(tierInfo.color)
         .setTitle(`✅ NPC Tier Changed: ${npc.name}`)
-        .setDescription(`**${npc.name}** has been upgraded/downgraded to **${tierInfo.displayName}** tier.\n\n${tierInfo.description}\n\n⚠️ **Stats have been regenerated** to match the new tier. Use \`/npc view ${npc.name}\` to see the updated stats.`)
+        .setDescription(`**${npc.name}** has been upgraded/downgraded to **${getTierDisplayName(newTier)}** tier.\n\n${tierInfo.description}\n\n⚠️ **Stats have been regenerated** to match the new tier. Use \`/npc view ${npc.name}\` to see the updated stats.`)
         .addFields(
-          { name: '🔄 Previous Tier', value: npc.tier, inline: true },
-          { name: '🎯 New Tier', value: newTier, inline: true },
+          { name: '🔄 Previous Tier', value: getTierDisplayName(npc.tier || 'unknown'), inline: true },
+          { name: '🎯 New Tier', value: getTierDisplayName(newTier), inline: true },
           { name: '📊 Changes', value: newTier === 'nemesis' ? 'Added drives and enhanced stats' : newTier === 'minion' ? 'Simplified stats, removed drives' : 'Enhanced stats, no drives', inline: false }
         )
         .setFooter({ text: 'Tier change completed with stat regeneration' })
@@ -830,7 +862,7 @@ function createNPCEmbed(npc: any): EmbedBuilder {
   const embed = new EmbedBuilder()
     .setColor(0x8B4513)
     .setTitle(`📋 ${npc.name}`)
-    .setDescription(`**Concepts:** ${npc.concepts.join(', ')}\n**Tier:** ${npc.tier}`)
+    .setDescription(`**Concepts:** ${npc.concepts.join(', ')}\n**Tier:** ${getTierDisplayName(npc.tier)}`)
     .addFields(
       { 
         name: '💪 Attributes', 
@@ -893,7 +925,7 @@ export async function autocomplete(interaction: any) {
         .filter((npc: any) => npc.name.toLowerCase().includes(focusedOption.value.toLowerCase()))
         .slice(0, 25)
         .map((npc: any) => ({
-          name: `${npc.name} (${npc.tier})`,
+          name: `${npc.name} (${getTierDisplayName(npc.tier)})`,
           value: npc.name
         }));
       
@@ -950,7 +982,7 @@ export async function autocomplete(interaction: any) {
         } else {
           // No drives available for non-Nemesis NPCs
           options = [{
-            name: `Drives only available for Nemesis tier NPCs (${npc.name} is ${npc.tier})`,
+            name: `Drives only available for Nemesis tier NPCs (${npc.name} is ${getTierDisplayName(npc.tier)})`,
             value: 'unavailable'
           }];
         }
