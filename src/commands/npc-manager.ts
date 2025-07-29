@@ -49,6 +49,27 @@ export const data = new SlashCommandBuilder()
           .setRequired(false)))
   .addSubcommand(subcommand =>
     subcommand
+      .setName('generate')
+      .setDescription('Generate a random NPC with optional naming and saving')
+      .addStringOption(option =>
+        option.setName('tier')
+          .setDescription('NPC tier')
+          .setRequired(true)
+          .addChoices(
+            { name: 'Minion', value: 'minion' },
+            { name: 'Toughened', value: 'toughened' },
+            { name: 'Nemesis', value: 'nemesis' }
+          ))
+      .addStringOption(option =>
+        option.setName('concept')
+          .setDescription('Primary concept/role (optional - will generate random if not provided)')
+          .setRequired(false))
+      .addBooleanOption(option =>
+        option.setName('save')
+          .setDescription('Save this NPC to the server (default: false)')
+          .setRequired(false)))
+  .addSubcommand(subcommand =>
+    subcommand
       .setName('list')
       .setDescription('List all NPCs in this server'))
   .addSubcommand(subcommand =>
@@ -120,15 +141,18 @@ export const data = new SlashCommandBuilder()
       .addStringOption(option =>
         option.setName('skill')
           .setDescription('Skill to use (for skill rolls)')
-          .setRequired(false))
+          .setRequired(false)
+          .setAutocomplete(true))
       .addStringOption(option =>
         option.setName('drive')
           .setDescription('Drive to use (for skill rolls)')
-          .setRequired(false))
+          .setRequired(false)
+          .setAutocomplete(true))
       .addStringOption(option =>
         option.setName('asset')
           .setDescription('Asset or weapon to use')
-          .setRequired(false))
+          .setRequired(false)
+          .setAutocomplete(true))
       .addStringOption(option =>
         option.setName('description')
           .setDescription('Description of the action')
@@ -201,6 +225,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     switch (subcommand) {
       case 'create':
         await handleCreateNPC(interaction, member);
+        break;
+      case 'generate':
+        await handleGenerateNPC(interaction, member);
         break;
       case 'list':
         await handleListNPCs(interaction);
@@ -280,6 +307,116 @@ async function handleCreateNPC(interaction: ChatInputCommandInteraction, member:
     logger.info(`NPC created: ${name} by ${member.user.tag}`);
   } catch (error) {
     logger.error('Error creating NPC:', error);
+    throw error;
+  }
+}
+
+async function handleGenerateNPC(interaction: ChatInputCommandInteraction, member: GuildMember) {
+  const tier = interaction.options.getString('tier', true) as 'minion' | 'toughened' | 'nemesis';
+  const concept = interaction.options.getString('concept');
+  const shouldSave = interaction.options.getBoolean('save') || false;
+
+  await interaction.deferReply();
+
+  try {
+    // Generate random concept if not provided
+    const generatedConcept = concept || generateRandomConcept();
+    
+    // Generate base stats for the tier
+    const baseStats = generateNPCStatsForTier(tier);
+    
+    // Add some randomization to make it more interesting
+    const randomizedStats = addRandomizationToStats(baseStats, tier);
+    
+    // Generate a temporary name for display
+    const tempName = generateTempNPCName(generatedConcept, tier);
+    
+    // Create the display embed
+    const embed = new EmbedBuilder()
+      .setColor(0x8B4513)
+      .setTitle(`🎲 Generated ${tier.charAt(0).toUpperCase() + tier.slice(1)} NPC`)
+      .setDescription(
+        `**Concept:** ${generatedConcept}\n` +
+        `**Tier:** ${tier}\n` +
+        `**Suggested Name:** ${tempName}`
+      )
+      .addFields(
+        { 
+          name: '💪 Attributes', 
+          value: `**Muscle:** ${randomizedStats.attributes.muscle} | **Move:** ${randomizedStats.attributes.move} | **Intellect:** ${randomizedStats.attributes.intellect}\n**Awareness:** ${randomizedStats.attributes.awareness} | **Communication:** ${randomizedStats.attributes.communication} | **Discipline:** ${randomizedStats.attributes.discipline}`,
+          inline: false 
+        }
+      );
+
+    if (randomizedStats.skills.length > 0) {
+      const skillsText = randomizedStats.skills
+        .filter((skill: any) => skill.value > 0)
+        .map((skill: any) => `**${skill.name}:** ${skill.value}`)
+        .join('\n') || 'None';
+      embed.addFields({ name: '🎯 Skills', value: skillsText, inline: true });
+    }
+
+    if (randomizedStats.assets.length > 0) {
+      const assetsText = randomizedStats.assets
+        .map((asset: any) => `**${asset.name}** (${asset.type}): ${asset.description}`)
+        .join('\n');
+      embed.addFields({ name: '🎒 Assets', value: assetsText, inline: false });
+    }
+
+    if (randomizedStats.traits.length > 0) {
+      const traitsText = randomizedStats.traits
+        .map((trait: any) => `**${trait.name}** (${trait.type}): ${trait.description}`)
+        .join('\n');
+      embed.addFields({ name: '✨ Traits', value: traitsText, inline: false });
+    }
+
+    if (shouldSave) {
+      // Save the NPC with the suggested name
+      const savedNPC = await prismaCharacterManager.createNPC(
+        tempName,
+        interaction.guild!.id,
+        [generatedConcept],
+        tier,
+        randomizedStats.attributes,
+        randomizedStats.skills,
+        randomizedStats.assets,
+        randomizedStats.traits,
+        member.id
+      );
+      
+      embed.setFooter({ text: `✅ NPC saved as "${savedNPC.name}" | Use /npc view to see details` });
+      logger.info(`Generated NPC saved: ${savedNPC.name} by ${member.user.tag}`);
+    } else {
+      // Create action buttons for saving with custom name or using as-is
+      const saveButtons = new ActionRowBuilder<ButtonBuilder>()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId(`save_generated_npc_${tier}_${generatedConcept}_${member.id}`)
+            .setLabel('Save with Custom Name')
+            .setStyle(ButtonStyle.Primary)
+            .setEmoji('📝'),
+          new ButtonBuilder()
+            .setCustomId(`save_generated_npc_quick_${tier}_${generatedConcept}_${tempName}_${member.id}`)
+            .setLabel(`Save as "${tempName}"`)
+            .setStyle(ButtonStyle.Success)
+            .setEmoji('💾'),
+          new ButtonBuilder()
+            .setCustomId('dismiss_generated_npc')
+            .setLabel('Dismiss')
+            .setStyle(ButtonStyle.Secondary)
+            .setEmoji('❌')
+        );
+      
+      embed.setFooter({ text: 'Use the buttons below to save this NPC or dismiss it' });
+      
+      await interaction.editReply({ embeds: [embed], components: [saveButtons] });
+      return;
+    }
+
+    embed.setTimestamp();
+    await interaction.editReply({ embeds: [embed] });
+  } catch (error) {
+    logger.error('Error generating NPC:', error);
     throw error;
   }
 }
@@ -656,7 +793,154 @@ export async function autocomplete(interaction: any) {
       logger.error('Error in NPC autocomplete:', error);
       await interaction.respond([]);
     }
+  } else if (focusedOption.name === 'skill' || focusedOption.name === 'drive' || focusedOption.name === 'asset') {
+    try {
+      // Get the selected NPC name from the command options
+      const npcName = interaction.options.getString('name');
+      if (!npcName) {
+        await interaction.respond([]);
+        return;
+      }
+
+      const npc = await prismaCharacterManager.getNPCByName(npcName, interaction.guild.id);
+      if (!npc) {
+        await interaction.respond([]);
+        return;
+      }
+
+      let options: { name: string; value: string }[] = [];
+
+      if (focusedOption.name === 'skill') {
+        // Filter skills that have a value > 0
+        options = (npc.skills || [])
+          .filter((skill: any) => skill.value > 0 && skill.name.toLowerCase().includes(focusedOption.value.toLowerCase()))
+          .slice(0, 25)
+          .map((skill: any) => ({
+            name: `${skill.name} (${skill.value})`,
+            value: skill.name
+          }));
+      } else if (focusedOption.name === 'drive') {
+        // NPCs typically don't have drives, but we'll check anyway
+        options = (npc.drives || [])
+          .filter((drive: any) => drive.name.toLowerCase().includes(focusedOption.value.toLowerCase()))
+          .slice(0, 25)
+          .map((drive: any) => ({
+            name: `${drive.name} (${drive.value || 'N/A'})`,
+            value: drive.name
+          }));
+      } else if (focusedOption.name === 'asset') {
+        // Filter assets/weapons
+        options = (npc.assets || [])
+          .filter((asset: any) => asset.name.toLowerCase().includes(focusedOption.value.toLowerCase()))
+          .slice(0, 25)
+          .map((asset: any) => ({
+            name: `${asset.name} (${asset.type})`,
+            value: asset.name
+          }));
+      }
+
+      await interaction.respond(options);
+    } catch (error) {
+      logger.error(`Error in NPC ${focusedOption.name} autocomplete:`, error);
+      await interaction.respond([]);
+    }
   }
+}
+
+// Helper functions for NPC generation
+function generateRandomConcept(): string {
+  const concepts = [
+    'Guard', 'Merchant', 'Spy', 'Assassin', 'Noble', 'Servant', 'Pilot', 'Engineer',
+    'Medic', 'Soldier', 'Scout', 'Diplomat', 'Smuggler', 'Bounty Hunter', 'Cultist',
+    'Fremen Warrior', 'House Retainer', 'Mentat', 'Bene Gesserit Adept', 'Guild Navigator',
+    'Suk Doctor', 'Swordmaster', 'Desert Guide', 'Spice Worker', 'Tech Adept',
+    'Information Broker', 'Cantina Owner', 'Starport Official', 'Customs Inspector'
+  ];
+  return concepts[Math.floor(Math.random() * concepts.length)];
+}
+
+function generateTempNPCName(concept: string, tier: string): string {
+  const prefixes = {
+    minion: ['', 'Young', 'Junior', 'Novice'],
+    toughened: ['', 'Veteran', 'Senior', 'Experienced'],
+    nemesis: ['Master', 'Lord', 'Commander', 'Chief']
+  };
+  
+  const names = [
+    'Alexei', 'Dmitri', 'Katya', 'Anya', 'Boris', 'Natasha', 'Viktor', 'Elena',
+    'Hassan', 'Farid', 'Zara', 'Amara', 'Rashid', 'Layla', 'Omar', 'Yasmin',
+    'Chen', 'Li', 'Wei', 'Mei', 'Jin', 'Xiao', 'Feng', 'Ling',
+    'Marcus', 'Julia', 'Gaius', 'Livia', 'Cassius', 'Octavia', 'Brutus', 'Claudia'
+  ];
+  
+  const tierPrefixes = prefixes[tier as keyof typeof prefixes] || prefixes.toughened;
+  const prefix = tierPrefixes[Math.floor(Math.random() * tierPrefixes.length)];
+  const name = names[Math.floor(Math.random() * names.length)];
+  
+  return prefix ? `${prefix} ${name}` : name;
+}
+
+function addRandomizationToStats(baseStats: any, tier: string) {
+  const randomized = JSON.parse(JSON.stringify(baseStats)); // Deep clone
+  
+  // Add some random variation to attributes (±1)
+  Object.keys(randomized.attributes).forEach(attr => {
+    const variation = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
+    randomized.attributes[attr] = Math.max(4, Math.min(12, randomized.attributes[attr] + variation));
+  });
+  
+  // Add some random skills based on tier
+  const additionalSkills = ['Stealth', 'Survival', 'Technology', 'Lore'];
+  const numAdditionalSkills = tier === 'nemesis' ? 2 : tier === 'toughened' ? 1 : 0;
+  
+  for (let i = 0; i < numAdditionalSkills; i++) {
+    const skillIndex = Math.floor(Math.random() * additionalSkills.length);
+    const skillName = additionalSkills.splice(skillIndex, 1)[0];
+    const skillValue = tier === 'nemesis' ? Math.floor(Math.random() * 3) + 2 : Math.floor(Math.random() * 2) + 1;
+    
+    randomized.skills.push({ name: skillName, value: skillValue });
+  }
+  
+  // Add some random assets based on tier
+  if (tier === 'toughened' || tier === 'nemesis') {
+    const weapons = [
+      { name: 'Kindjal', type: 'Weapon', description: 'Traditional curved blade' },
+      { name: 'Lasgun', type: 'Weapon', description: 'Energy weapon' },
+      { name: 'Maula Pistol', type: 'Weapon', description: 'Spring-loaded dart gun' }
+    ];
+    
+    const equipment = [
+      { name: 'Stillsuit', type: 'Equipment', description: 'Desert survival gear' },
+      { name: 'Personal Shield', type: 'Equipment', description: 'Defensive energy field' },
+      { name: 'Comm Unit', type: 'Equipment', description: 'Communication device' }
+    ];
+    
+    // Add 1-2 random items
+    const allItems = [...weapons, ...equipment];
+    const numItems = Math.floor(Math.random() * 2) + 1;
+    
+    for (let i = 0; i < numItems && allItems.length > 0; i++) {
+      const itemIndex = Math.floor(Math.random() * allItems.length);
+      randomized.assets.push(allItems.splice(itemIndex, 1)[0]);
+    }
+  }
+  
+  // Add traits for nemesis tier
+  if (tier === 'nemesis') {
+    const traits = [
+      { name: 'Commanding Presence', type: 'Social', description: 'Inspires fear and respect' },
+      { name: 'Combat Veteran', type: 'Combat', description: 'Experienced in battle' },
+      { name: 'Strategic Mind', type: 'Mental', description: 'Excellent tactical thinking' }
+    ];
+    
+    const numTraits = Math.floor(Math.random() * 2) + 1;
+    for (let i = 0; i < numTraits && traits.length > 0; i++) {
+      const traitIndex = Math.floor(Math.random() * traits.length);
+      randomized.traits.push(traits.splice(traitIndex, 1)[0]);
+    }
+  }
+  
+  return randomized;
 }
 
 // Export handler functions for bot.ts integration

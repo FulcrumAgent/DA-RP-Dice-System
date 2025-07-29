@@ -14,34 +14,47 @@ import { DiceEngine, DiceParser, DiceSystem, DiceResult } from '../utils/dice-en
 import { logger } from '../utils/logger';
 
 export const diceRollerCommands = [
+  // Standard dice rolling
   new SlashCommandBuilder()
     .setName('roll')
-    .setDescription('Roll dice using various RPG systems')
+    .setDescription('Roll standard dice (e.g., 3d6+2, 2d10)')
     .addStringOption(option =>
       option.setName('dice')
         .setDescription('Dice notation (e.g., 3d6, 2d10+5)')
         .setRequired(true)
-    )
+    ),
+
+  // Exploding dice rolling
+  new SlashCommandBuilder()
+    .setName('roll-exploding')
+    .setDescription('Roll exploding dice (max results roll again)')
     .addStringOption(option =>
-      option.setName('system')
-        .setDescription('Dice system to use')
-        .setRequired(false)
-        .addChoices(
-          { name: 'Standard', value: 'standard' },
-          { name: 'Exploding', value: 'exploding' },
-          { name: 'World of Darkness', value: 'wod' }
-        )
+      option.setName('dice')
+        .setDescription('Dice notation (e.g., 3d6, 2d10+5)')
+        .setRequired(true)
+    ),
+
+  // World of Darkness dice rolling
+  new SlashCommandBuilder()
+    .setName('roll-wod')
+    .setDescription('Roll World of Darkness dice pool')
+    .addIntegerOption(option =>
+      option.setName('pool')
+        .setDescription('Number of d10s to roll')
+        .setRequired(true)
+        .setMinValue(1)
+        .setMaxValue(30)
     )
     .addIntegerOption(option =>
       option.setName('difficulty')
-        .setDescription('Difficulty for WoD system (1-10)')
+        .setDescription('Difficulty number (default: 6)')
         .setRequired(false)
         .setMinValue(1)
         .setMaxValue(10)
     )
     .addBooleanOption(option =>
       option.setName('specialty')
-        .setDescription('Use specialty rules for WoD (10s count double)')
+        .setDescription('Use specialty rules (10s count double)')
         .setRequired(false)
     ),
 
@@ -52,27 +65,42 @@ export const diceRollerCommands = [
 
 export async function handleRollCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   try {
-    const options = interaction.options;
-    const dice = options.get('dice')?.value as string;
-    const system = (options.get('system')?.value as string) || 'standard';
-    const difficulty = (options.get('difficulty')?.value as number) || 6;
-    const specialty = (options.get('specialty')?.value as boolean) || false;
-
-    // Parse dice notation
-    const { count, sides, modifier } = DiceParser.parseStandardNotation(dice);
-    DiceParser.validateDiceParameters(count, sides);
-
-    // Roll based on system
+    const commandName = interaction.commandName;
     let result: DiceResult;
-    
-    switch (system) {
-      case 'standard':
+    let diceNotation: string;
+    let system: string;
+
+    switch (commandName) {
+      case 'roll': {
+        // Standard dice rolling
+        const dice = interaction.options.getString('dice', true);
+        const { count, sides, modifier } = DiceParser.parseStandardNotation(dice);
+        DiceParser.validateDiceParameters(count, sides);
+        
         result = DiceEngine.standardRoll(count, sides, modifier);
+        diceNotation = dice;
+        system = 'standard';
         break;
-      case 'exploding':
+      }
+      
+      case 'roll-exploding': {
+        // Exploding dice rolling
+        const dice = interaction.options.getString('dice', true);
+        const { count, sides, modifier } = DiceParser.parseStandardNotation(dice);
+        DiceParser.validateDiceParameters(count, sides);
+        
         result = DiceEngine.explodingRoll(count, sides, modifier);
+        diceNotation = dice;
+        system = 'exploding';
         break;
-      case 'wod':
+      }
+      
+      case 'roll-wod': {
+        // World of Darkness dice rolling
+        const pool = interaction.options.getInteger('pool', true);
+        const difficulty = interaction.options.getInteger('difficulty') || 6;
+        const specialty = interaction.options.getBoolean('specialty') || false;
+        
         if (difficulty < 1 || difficulty > 10) {
           await interaction.reply({ 
             content: '❌ WoD difficulty must be between 1 and 10.', 
@@ -80,18 +108,23 @@ export async function handleRollCommand(interaction: ChatInputCommandInteraction
           });
           return;
         }
-        result = DiceEngine.worldOfDarknessRoll(count, difficulty, specialty);
+        
+        result = DiceEngine.worldOfDarknessRoll(pool, difficulty, specialty);
+        diceNotation = `${pool}d10`;
+        system = 'wod';
         break;
+      }
+      
       default:
         await interaction.reply({ 
-          content: '❌ Invalid dice system.', 
+          content: '❌ Unknown roll command.', 
           ephemeral: true 
         });
         return;
     }
 
     // Create response embed
-    const embed = createDiceEmbed(result, dice, system, interaction.user);
+    const embed = createDiceEmbed(result, diceNotation, system, interaction.user);
     await interaction.reply({ embeds: [embed] });
 
   } catch (error) {
@@ -109,52 +142,35 @@ export async function handleRollCommand(interaction: ChatInputCommandInteraction
 
 export async function handleRollHelpCommand(interaction: CommandInteraction): Promise<void> {
   const embed = new EmbedBuilder()
+    .setColor(0x0099FF)
     .setTitle('🎲 Dice Rolling Help')
-    .setDescription('Comprehensive guide to using the dice roller')
-    .setColor('#0099ff')
+    .setDescription('Available dice rolling commands and their usage:')
     .addFields(
       {
-        name: '📝 Dice Notation',
-        value: [
-          '`3d6` - Roll 3 six-sided dice',
-          '`2d10+5` - Roll 2d10, add 5',
-          '`1d20-2` - Roll 1d20, subtract 2',
-          '`d6` - Roll 1 six-sided die'
-        ].join('\n'),
+        name: '🎯 `/roll` - Standard Dice',
+        value: `**Usage:** \`/roll dice:3d6+2\`\n**Description:** Basic dice rolling with modifiers\n**Examples:**\n• \`/roll dice:3d6\` - Roll 3 six-sided dice\n• \`/roll dice:2d10+5\` - Roll 2 ten-sided dice, add 5\n• \`/roll dice:1d20-2\` - Roll 1 twenty-sided die, subtract 2`,
         inline: false
       },
       {
-        name: '🎯 Standard System',
-        value: [
-          'Basic dice rolling with modifiers',
-          '**Example:** `/roll dice:3d6+2 system:standard`',
-          'Shows total of all dice plus modifier'
-        ].join('\n'),
+        name: '💥 `/roll-exploding` - Exploding Dice',
+        value: `**Usage:** \`/roll-exploding dice:4d6\`\n**Description:** When you roll the maximum value, roll again and add\n**Examples:**\n• \`/roll-exploding dice:4d6\` - Roll 4d6, any 6s explode\n• \`/roll-exploding dice:3d10+1\` - Roll 3d10+1, any 10s explode`,
         inline: false
       },
       {
-        name: '💥 Exploding System',
-        value: [
-          'Dice explode on maximum roll',
-          '**Example:** `/roll dice:3d6 system:exploding`',
-          'Reroll and add when you roll max value'
-        ].join('\n'),
+        name: '🌙 `/roll-wod` - World of Darkness',
+        value: `**Usage:** \`/roll-wod pool:8 difficulty:6\`\n**Description:** Roll a pool of d10s, count successes vs difficulty\n**Options:**\n• \`pool\` - Number of d10s to roll (required)\n• \`difficulty\` - Target number (default: 6)\n• \`specialty\` - 10s count as 2 successes\n**Examples:**\n• \`/roll-wod pool:8\` - Roll 8 dice vs difficulty 6\n• \`/roll-wod pool:5 difficulty:7 specialty:true\``,
         inline: false
       },
       {
-        name: '🌙 World of Darkness',
-        value: [
-          'Count successes vs difficulty',
-          '**Example:** `/roll dice:5d10 system:wod difficulty:7`',
-          'Rolls ≥ difficulty = success, 1s may cause botch',
-          'Use `specialty:true` for 10s counting double'
-        ].join('\n'),
+        name: '📝 Dice Notation (for /roll and /roll-exploding)',
+        value: `**Format:** \`[count]d[sides][+/-modifier]\`\n**Examples:**\n• \`d20\` = \`1d20\`\n• \`3d6+2\` - Add 2 to total\n• \`2d8-1\` - Subtract 1 from total`,
         inline: false
       }
     )
-    .setFooter({ text: 'For Dune 2d20 system, use /dune-roll command' });
+    .setFooter({ text: 'Each command only shows relevant options - no more confusion!' })
+    .setTimestamp();
 
-  await interaction.reply({ embeds: [embed], ephemeral: true });
+  await interaction.reply({ embeds: [embed] });
 }
 
 function createDiceEmbed(result: DiceResult, diceNotation: string, system: string, user: User): EmbedBuilder {
