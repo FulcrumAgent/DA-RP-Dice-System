@@ -17,183 +17,364 @@ import { logger } from '../utils/logger';
 
 // Forum post templates
 const FORUM_POST_TEMPLATES = {
+  'Introduction & Project Overview': {
+    title: 'Introduction & Project Overview',
+    content: `# **Dune: Awakened Adventures**
+**DA-RP Dice System** is an advanced, Discord-based dice roller and character assistant designed for running campaigns using the *Dune: Adventures in the Imperium* tabletop RPG (Modiphius 2d20 system).
+
+- **Automates dice rolls** (including 2d20 mechanics, momentum, threat, complications)
+- **Manages character sheets** for players and NPCs, including custom avatars and assets
+- **Supports both players and GMs** with commands for rolls, scene hosting, and more
+- **Integrates with Discord** for in-server roleplay, session management, and player immersion
+
+## **Why Use This Bot?**
+Dune's RPG system is fast, cinematic, and dramatic—but running it online can be tricky! This bot handles all the dice, math, and sheet management so you can focus on story and intrigue.
+
+- No need to install or memorise external dice bots or rules
+- Fast commands for every Dune mechanic
+- Flexible enough for custom house rules and campaign setups
+
+**Note:** This tool is *not* a replacement for the official rulebooks. It's meant as a quick start and practical guide for players, GMs, and devs using the Dune 2d20 system in Discord. I strongly encourage people to pick up some of the TTRPG books aat [Mophidius Entertainment's site](https://modiphius.us/collections/dune-adventures-in-the-imperium).`
+  },
   'Storyguide/GM Guide': {
     title: 'Storyguide/GM Guide',
-    content: `# Welcome to the Storyguide/GM Guide!
+    content: `# **STORYGUIDE/GM ROLE**
+- Run scenes, challenges, and story beats for the group.
+- Control all NPCs, adversaries, and environmental hazards.
+- Set the difficulty and consequences for rolls.
+- Award or use Momentum and Threat.
+- Create and manage scenes using the bot's commands.
+- Keep the action moving, make rulings, and spotlight character Drives and Statements.
 
-This forum post contains essential information for Game Masters running Dune: Awakened Adventures campaigns.
 
-## Getting Started
-- Review the core mechanics and house rules
-- Familiarize yourself with the momentum and threat systems
-- Understand character creation guidelines
+# **SETTING UP A SCENE**
+1. In <#1399805471866617927>, type:
+/scene host
 
-## Quick Reference
-- Use \`/dune-help\` for system mechanics
-- Use \`/scene-host\` commands for scene management
-- Check character sheets in #character-sheets
+2. The bot creates a new thread for the scene. Announce who's involved and set the opening situation.
 
-## Resources
-More detailed guides and resources will be added here as the community grows.
+3. Players join the scene with:
+/scene join
 
-*This is a living document - feel free to ask questions and contribute!*`
+4. List all active scenes or see participants:
+/scene list
+/scene status
+
+
+# **RUNNING CHALLENGES**
+1. Set the Difficulty (1 = easy, 2 = standard, 3+ = hard).
+
+2. Tell players which Skill and Drive you think are most relevant.
+
+3. Ask for rolls using:
+*/dune-roll skill:[Skill] drive:[Drive] difficulty:[#]*
+
+4. Watch for Momentum (extra successes) and Threat (players can add dice by giving you Threat).
+
+5. Narrate the results. If a player rolls a 20, add a Complication!
+
+
+# **NPC MANAGEMENT**
+- Create new NPCs for major or recurring adversaries:
+
+    */npc create*
+    */npc generate*
+- For quick rolls (supporting characters or minor enemies), use:
+
+    */npc roll basic*
+    */npc roll skill [skill] [difficulty] [bonus]*
+- For combat or dramatic moments, use:
+
+    */npc roll attack*
+    */npc roll resist*
+- View or edit NPC stats:
+
+    */npc view [name]*
+    */npc edit*
+
+
+# **MOMENTUM AND THREAT**
+*Momentum (player pool):*
+    - Players earn Momentum for extra successes.
+    - Can be spent for bonus dice, info, improved results, or team effects.
+    - Track with /momentum or use the scene's resources command.
+
+*Threat (GM pool):*
+    - Players give you Threat to buy extra dice.
+    - You spend Threat to raise difficulty, introduce hazards, or complicate scenes.
+    - Announce when you use Threat for full transparency.
+
+
+# **COMPLICATIONS**
+- If any die rolls a 20, a Complication happens.
+- Complications can make the scene harder, add new problems, or create dramatic twists.
+- *Examples:* An alarm is triggered, a sandstorm hits, a weapon jams, backup arrives.
+- Make Complications meaningful but fair—don't punish, add drama!
+
+
+# **BEST PRACTICES**
+- Use clear, concise narration and spotlight characters' Drives and Statements.
+- Ask players what their Drives mean to them in tough situations.
+- Keep scenes moving—don't sweat every rule.
+- Use the bot for all dice and sheet management, focus your energy on story and characters.
+- Encourage teamwork and clever solutions, not just dice rolls.
+- Make Threat and Momentum visible to everyone.`
   },
   'Command Reference': {
     title: 'Command Reference',
-    content: `# Bot Command Reference
+    content: `# **LOOKUP & HELP COMMANDS**
+- */dune-help*
+   Shows a summary of all major commands and core rules. Great for new players.
+- */dune-reference*
+   Quick rules and Dune-specific term lookups.
+- */lookup asset [asset name or partial]*
+   Get info about an asset (gear, contact, etc).
+- */lookup npc [name or tag]*
+   Get info about a non-player character.
+- */lookup rules [topic]*
+   Find a rule summary by keyword or category.
+- */lookup skill [skill name]*
+   Shows an explanation of a specific skill.
+- */roll-help*
+   Quick help on how dice rolling works and available options.
 
-Complete list of available bot commands for Dune: Awakened Adventures.
 
-## Dice Rolling Commands
-- \`/roll\` - Basic dice rolling with modifiers
-- \`/dune-roll\` - Dune system-specific rolls with momentum
-- \`/roll-help\` - Help with dice rolling syntax
+# **DICE ROLLING COMMANDS**
+- /roll
+   Roll standard dice with custom notation.
+   Examples: /roll 3d6+2, /roll 2d10, /roll 1d20+5
+- /roll-exploding
+   Roll exploding dice (when the max result is rolled, that die is rolled again and added).
+   *Example:* /roll-exploding 4d6
+- /roll-wod
+   Roll a World of Darkness-style dice pool.
+   *Example:* /roll-wod 7 (roll 7d10, count successes by WoD rules)
+- /roll-help
+   Show help and examples for all supported dice-rolling systems.
 
-## Character Management
-- \`/character-sheet\` - Create and manage character sheets
-- \`/character-sheet view\` - View existing character sheets
 
-## Scene Management
-- \`/scene-host\` - Tools for managing scenes and encounters
+## **CHARACTER SHEET COMMANDS**
+- */sheet create*
+  Start a new character sheet for your PC. The bot will walk you through entering name, skills, drives, drive statements, and assets.
+- */sheet edit*
+  Update details on your character sheet—skills, drives, drive statements, avatar, or assets.
+- */sheet view*
+  Displays your current character sheet in a formatted embed (shows avatar, stats, assets).
+- */sheet delete*
+  Permanently remove your character sheet (warning: can't be undone).
+- */character avatar set [upload image or URL]*
+  Set a custom avatar for your character sheet.
 
-## System Commands
-- \`/momentum\` - Manage momentum pool
-- \`/dune-help\` - System mechanics reference
-- \`/dune-reference\` - Quick rules lookup
 
-## Server Setup
-- \`/setup-server\` - Create standard server structure (Admin only)
+# **NPC MANAGEMENT COMMANDS**
+- */npc create*
+  Start a new NPC (used by Storyguide/GM or for background characters).
+- */npc edit*
+  Change an NPC's details, stats, or avatar.
+- */npc list*
+  List all current NPCs in the game/server.
+- */npc view [NPC name]*
+  View the sheet/stats for a selected NPC.
+- */npc delete*
+  Remove an NPC from the game.
+- */npc generate*
+  Randomly create a supporting character or adversary for fast play.
 
-*Use any command with no parameters to see detailed help!*`
+
+# **SCENE & STORY COMMANDS**
+- */scene host*
+  Start (host) a new scene. Creates a scene thread for active play.
+- */scene join*
+  Join an open scene (thread) as a participant.
+- */scene list*
+  Show all active scenes.
+- */scene end*
+  End and archive the current scene.
+- */scene pass*
+  Pass scene hosting duties to another participant in the scene.
+  Use this when you want to hand off GM/Storyguide control, let another player narrate, or switch perspectives during an active scene.
+- */scene resources*
+  View scene-specific resources (momentum, threat, assets in play).
+- */scene status*
+  Shows current status, active PCs/NPCs, and key scene info.
+
+
+# **IN-SCENE & NPC ROLL COMMANDS**
+- */momentum*
+  Display or update current momentum pool for the scene.
+- */npc roll attack*
+  Roll an attack for a specified NPC against a target or defense.
+- */npc roll basic*
+  Make a basic skill/drive roll for an NPC (e.g., resisting a PC action).
+- */npc roll resist*
+  NPC attempts to resist or defend against a PC action.
+- */npc roll skill [skill] [difficulty] [bonus]*
+  Run a custom skill/drive test for any NPC.`
   },
   'Key Concepts & Core Mechanics': {
     title: 'Key Concepts & Core Mechanics',
-    content: `# Key Concepts & Core Mechanics
+    content: `# **SKILLS AND DRIVES**
+Every character in Dune: Awakened Adventures has 5 Skills and 5 Drives.
 
-Essential mechanics for Dune: Awakened Adventures gameplay.
+## **SKILLS:**
+- Battle: Fighting, tactics, physical conflict
+- Communicate: Persuasion, social skills, deception, reading people
+- Discipline: Willpower, focus, resisting fear or temptation
+- Move: Stealth, agility, climbing, running, dodging
+- Understand: Investigation, knowledge, deduction, insight
 
-## Core Resolution
-- Roll 2d20 + Attribute + Skill
-- Target Number (TN) set by difficulty
-- Success = meeting or exceeding TN
-- Momentum generated from excess success
+## **DRIVES:**
+- Duty: Loyalty, responsibility, following orders or codes
+- Faith: Belief in religion, prophecy, fate, or personal conviction
+- Justice: Sense of fairness, righting wrongs, moral choices
+- Power: Ambition, strength of will, seeking control or influence
+- Truth: Pursuit of honesty, knowledge, clarity, uncovering secrets
 
-## Momentum System
-- Shared resource for the group
-- Spend for advantages and special effects
-- Generated by successful rolls and roleplay
-- Maximum pool varies by group size
+---
 
-## Threat System
-- GM resource for complications
-- Generated by player failures and choices
-- Used for environmental hazards and opposition
+# **ROLLING DICE: THE 2D20 SYSTEM**
+Most actions are resolved with a Skill + Drive roll using two twenty-sided dice (2d20).
 
-## Character Attributes
-- **Muscle**: Physical strength and endurance
-- **Move**: Agility and reflexes  
-- **Intellect**: Reasoning and knowledge
-- **Awareness**: Perception and intuition
-- **Communication**: Social interaction
-- **Discipline**: Mental fortitude and focus
+## **BASIC STEPS:**
+1. Choose the most relevant Skill and Drive for the action.
+2. Add your Skill score and Drive score to get your TARGET NUMBER.
+3. Roll 2d20 (you may roll more dice if you spend Momentum or take on Threat).
+4. Each die that rolls equal to or under your TARGET NUMBER counts as a SUCCESS.
+5. If you roll equal to or under your Skill score, you get a CRITICAL SUCCESS (counts as 2).
+6. The GM sets a DIFFICULTY (number of successes needed).
+7. If you meet or exceed the DIFFICULTY, you succeed! Extra successes become MOMENTUM.
+8. Rolling a 20 on any die is a COMPLICATION—something goes wrong, even if you succeed.
 
-## Skills & Focuses
-- Skills provide broad competency
-- Focuses offer specialized expertise
-- Both add to dice rolls when applicable
+## **NOTES:**
+- Most rolls use 2d20, but you can add up to 3 more dice (max 5d20) by spending Momentum or accepting Threat.
+- GMs and players can use "assets" (gear, information, support) to get bonuses.
 
-*Refer to the official rulebook for complete mechanics!*`
+## **COMMON TERMS:**
+- TARGET NUMBER = Skill + Drive
+- MOMENTUM = Bonus points earned from extra successes, spent for more dice or effects
+- THREAT = GM's "currency" for raising tension or causing trouble
+- DIFFICULTY = Number of successes needed to accomplish the task
+
+---
+
+# **CHARACTER SHEET BASICS**
+A character sheet contains everything needed to play:
+
+- Name and (optional) Avatar
+- Five Skills (Battle, Communicate, Discipline, Move, Understand), each rated 4–8 for most PCs
+- Five Drives (Duty, Faith, Justice, Power, Truth), each rated 4–8 for most PCs
+- Drive Statements: Short sentences or beliefs tied to each Drive
+- Assets: Gear, contacts, information, special training, or relationships used in play
+- (Optional) Traits, Talents, and Notes: Distinctive abilities or background info
+- Current Momentum, Stress, or Harm (tracked as needed during sessions)
+
+---
+
+# **EXAMPLE TURN: HOW A ROLL WORKS**
+1. The GM asks you to sneak past a Harkonnen patrol.
+2. You pick the most relevant Skill and Drive: Move (6) + Duty (7) = TARGET NUMBER 13.
+3. The GM sets Difficulty 2 (you need 2 successes).
+4. You roll 2d20: you get a 10 and a 6.
+    - Both are under 13 (your Target), so both are successes!
+    - The 6 is also equal to or under your Move score, so it's a CRITICAL SUCCESS (counts as 2).
+5. You score 3 successes total—enough to succeed and earn 1 Momentum (3 - 2 = 1).
+6. If either die had rolled a 20, a complication would be introduced by the GM.
+
+---
+
+# **DUNE TERMS GLOSSARY**
+- *Momentum:* Bonus points earned by getting more successes than you need, spent for extra dice or effects.
+- *Threat:* GM's pool for causing trouble, raising stakes, or complicating actions.
+- *Asset:* Any item, person, piece of info, or resource your character uses.
+- *Trait:* Special features or story tags that define your character (e.g., "Fremen," "Bene Gesserit Trained").
+- *Complication:* Bad or unexpected event caused by rolling a 20.
+- *Drive Statement:* Your character's personal belief or motto tied to each Drive.
+- *NPC:* Non-player character (controlled by GM or bot).
+- *GM / Storyguide:* The game master or narrator, running scenes and challenges.`
   },
   'Quick Start Guide': {
     title: 'Quick Start Guide',
-    content: `# Quick Start Guide
+    content: `Welcome to Dune: Awakened Adventures—your Discord-based TTRPG system for the world of Dune!
+Each function has its own server channel. Use these commands in the correct channels as listed below.
 
-Get up and running with Dune: Awakened Adventures!
+-------------------------------
+<#1399805506347864094>
 
-## For New Players
+Use this channel for quick rule lookups and bot help:
 
-### 1. Create Your Character
-- Use \`/character-sheet\` to start character creation
-- Follow the guided prompts for attributes, skills, and background
-- Choose drives that motivate your character
+    /dune-help
+    /dune-reference
+    /lookup asset
+    /lookup npc
+    /lookup rules
+    /lookup skill
+    /roll-help
 
-### 2. Learn the Basics
-- Read the Key Concepts & Core Mechanics post
-- Practice with \`/roll\` and \`/dune-roll\` commands
-- Ask questions in #dice-help
+-------------------------------
+<#1399805381584359597>
 
-### 3. Join the Adventure
-- Coordinate with your Storyguide for session scheduling
-- Use #scenes for in-character roleplay
-- Check #character-sheets for character updates
+For any personal or out-of-scene dice rolls:
 
-## For Storyguides
+    /roll
+    /dune-roll
 
-### 1. Server Setup
-- Run \`/setup-server\` to create standard channels (if not done)
-- Review the Storyguide/GM Guide post
-- Set up your campaign in #scenes
+*Only use /dune-roll here for personal rolls unrelated to an active scene.*
 
-### 2. Session Management  
-- Use \`/scene-host\` commands for encounters
-- Manage momentum and threat pools
-- Guide players through character creation
+-------------------------------
+<#1399806884227186788>
 
-### 3. Resources
-- Bot commands handle most mechanics automatically
-- Use \`/dune-reference\` for quick rule lookups
-- Encourage player engagement with momentum system
+Create and manage player characters and NPCs.
 
-## Getting Help
-- #dice-help for bot and system questions
-- Storyguide/GM Guide for advanced topics
-- Command Reference for complete bot documentation
+Player Character Commands:
+    /sheet create
+    /sheet delete
+    /sheet edit
+    /sheet view
 
-*Welcome to the desert planet - may your journey be legendary!*`
-  },
-  'Introduction & Project Overview': {
-    title: 'Introduction & Project Overview',
-    content: `# Welcome to Dune: Awakened Adventures!
+NPC Commands:
+    /npc create
+    /npc delete
+    /npc edit
+    /npc generate
+    /npc list
+    /npc view
 
-This Discord server supports tabletop roleplaying in the Dune universe using a custom system designed for narrative gameplay.
+-------------------------------
+<#1399805471866617927>
 
-## What is Dune: Awakened Adventures?
-A tabletop RPG system set in Frank Herbert's Dune universe, focusing on:
-- Political intrigue and house conflicts
-- Survival in harsh desert environments  
-- The mystical powers of the Bene Gesserit and other factions
-- Epic storytelling across the Known Universe
+For running, joining, and playing in active story scenes.
 
-## Server Purpose
-This Discord server provides:
-- **Automated dice rolling** with momentum mechanics
-- **Character sheet management** with persistent storage
-- **Scene management tools** for Storyguides
-- **Reference materials** and quick rule lookups
-- **Community space** for players and GMs
+Scene Setup/Lobby Commands:
+    /scene host
+    /scene join
+    /scene list
 
-## Getting Started
-1. Check out the **Quick Start Guide** for new player orientation
-2. Review **Key Concepts & Core Mechanics** for system basics
-3. Use the **Command Reference** to learn bot capabilities
-4. Storyguides should read the **GM Guide** for advanced features
+In-Scene Thread Commands:
+    /scene end
+    /scene pass
+    /scene resources
+    /scene status
+    /dune-roll
+    /momentum
+    /npc roll attack
+    /npc roll basic
+    /npc roll resist
+    /npc roll skill
 
-## Community Guidelines
-- Respect all players and their creative contributions
-- Keep discussions relevant to Dune and tabletop gaming
-- Use appropriate channels for different types of content
-- Help new players learn the system and bot commands
+-------------------------------
+FIRST STEPS FOR NEW PLAYERS
 
-## Technical Details
-- Bot built with Discord.js and TypeScript
-- Character data persisted in PostgreSQL database
-- Open source project - contributions welcome!
-- Hosted on Railway for reliable uptime
+1. Create your character in <#1399806884227186788>:
+       /sheet create
 
-*The spice must flow - and so must great stories!*
+2. Set a custom avatar (optional):
+       /character avatar set [upload image or paste image URL]
 
----
-*Server created with the Dune: Awakened Adventures Discord Bot*`
+3. Make a test roll in <#1399805381584359597>:
+       /dune-roll skill:[Skill] drive:[Drive] bonus:[#] description:[optional]
+
+-------------------------------
+Need more help? Check <#1399805506347864094> or ask in the <#1399823303475990528> channel.`
   }
 };
 
@@ -328,9 +509,8 @@ export async function handleServerSetupCommand(interaction: CommandInteraction):
               reason: 'Server setup - creating documentation post'
             });
 
-            // Pin the post (forum threads use different pinning method)
+            // Don't auto-pin to avoid hitting Discord's pinned thread limit
             await forumPost.setArchived(false);
-            await forumPost.pin();
             
             results.postsCreated++;
             logger.info(`Created forum post: ${template.title} in ${guild.name}`);
