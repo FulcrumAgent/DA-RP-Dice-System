@@ -226,13 +226,13 @@ Need more help? Check <#1399805506347864094> or ask in the <#1399823303475990528
   }
 };
 
-// Text channels to create
+// Text channels to create (in desired visual order)
 const TEXT_CHANNELS = [
-  { name: 'lookups', topic: 'Quick reference lookups and rule clarifications' },
-  { name: 'dice-help', topic: 'Help with dice rolling commands and bot usage' },
-  { name: 'dice-rolling', topic: 'Practice dice rolls and test bot commands' },
-  { name: 'character-sheets', topic: 'Character creation, updates, and sheet management' },
-  { name: 'scenes', topic: 'In-character roleplay and scene descriptions' }
+  { name: 'lookups', topic: 'Quick reference lookups and rule clarifications', position: 1 },
+  { name: 'dice-help', topic: 'Help with dice rolling commands and bot usage', position: 2 },
+  { name: 'dice-rolling', topic: 'Practice dice rolls and test bot commands', position: 3 },
+  { name: 'character-sheets', topic: 'Character creation, updates, and sheet management', position: 4 },
+  { name: 'scenes', topic: 'In-character roleplay and scene descriptions', position: 5 }
 ];
 
 export const serverSetupCommand = new SlashCommandBuilder()
@@ -318,6 +318,7 @@ export async function handleServerSetupCommand(interaction: CommandInteraction):
           type: ChannelType.GuildForum,
           topic: 'Server documentation and guides for Dune: Awakened Adventures',
           parent: duneCategory?.id, // Assign to category
+          position: 0, // First in category
           reason: 'Server setup - creating documentation forum'
         });
         results.forumCreated = true;
@@ -385,6 +386,7 @@ export async function handleServerSetupCommand(interaction: CommandInteraction):
             type: ChannelType.GuildText,
             topic: channelConfig.topic,
             parent: duneCategory?.id, // Assign to category
+            position: channelConfig.position, // Set visual order
             reason: 'Server setup - creating standard text channel'
           });
           results.channelsCreated++;
