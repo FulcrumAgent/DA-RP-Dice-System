@@ -3,7 +3,7 @@
  */
 
 import { GuildMember, StringSelectMenuInteraction, ButtonInteraction } from 'discord.js';
-import { characterManager } from '../utils/character-manager';
+import { prismaCharacterManager } from '../utils/prisma-character-manager';
 
 // Note: character-sheet.ts doesn't export these functions anymore
 // They are handled directly in the execute function
@@ -38,7 +38,7 @@ export async function handleButtonInteraction(interaction: ButtonInteraction): P
 // Handle delete character selection
 async function handleDeleteCharacterSelect(interaction: StringSelectMenuInteraction, member: GuildMember): Promise<void> {
   const characterId = interaction.values[0];
-  const character = characterManager.getCharacter(characterId);
+  const character = await prismaCharacterManager.getCharacter(characterId);
   
   if (!character) {
     await interaction.update({ 
@@ -60,7 +60,7 @@ async function handleDeleteCharacterSelect(interaction: StringSelectMenuInteract
   await interaction.deferUpdate();
 
   try {
-    await characterManager.deleteCharacter(characterId, member.id);
+    await prismaCharacterManager.deleteCharacter(characterId, member.id);
     await interaction.editReply({ 
       content: `💀 Character **${character.name}** has been deleted. Farewell, ${character.concepts.join(', ')}.`,
       components: []

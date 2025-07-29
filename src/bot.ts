@@ -447,8 +447,8 @@ class DuneBot {
         case 'confirm_delete': {
           const memberConfirmDelete = interaction.member as GuildMember;
           if (memberConfirmDelete) {
-            const { characterManager } = await import('./utils/character-manager.js');
-            await this.handleConfirmDeleteButton(interaction, memberConfirmDelete, characterManager);
+            const { prismaCharacterManager } = await import('./utils/prisma-character-manager.js');
+            await this.handleConfirmDeleteButton(interaction, memberConfirmDelete, prismaCharacterManager);
           }
           break;
         }
