@@ -4,7 +4,7 @@
 
 import { ButtonInteraction, GuildMember, EmbedBuilder } from 'discord.js';
 import { characterCreationState } from '../utils/character-creation-state';
-import { characterManager } from '../utils/character-manager';
+import { prismaCharacterManager } from '../utils/prisma-character-manager';
 import { logger } from '../utils/logger';
 
 // Button interaction handlers
@@ -24,8 +24,8 @@ export async function handleFinalizeButton(interaction: ButtonInteraction) {
       return;
     }
 
-    // Create the character using the character manager
-    await characterManager.createCharacter(
+    // Create the character using the Prisma character manager
+    await prismaCharacterManager.createCharacter(
       member.id,
       interaction.guild.id,
       state.data.name || 'Unnamed Character',

@@ -36,7 +36,7 @@ import {
   ValidationResult, 
   PointBuyValidation 
 } from '../interfaces/canonical-character';
-import { characterManager, DuneCharacter, DuneAsset } from '../utils/character-manager';
+import { prismaCharacterManager, CharacterWithRelations } from '../utils/prisma-character-manager';
 
 // In-memory storage for creation sessions (replace with database later)
 const creationSessions = new Map<string, CharacterCreationSession>();
@@ -1014,8 +1014,8 @@ export class CharacterCreator {
       });
       
       // Save to character manager
-      logger.info('Calling characterManager.createCharacter...');
-      await characterManager.createCharacter(
+      logger.info('Calling prismaCharacterManager.createCharacter...');
+      await prismaCharacterManager.createCharacter(
         interaction.user.id,
         interaction.guildId!,
         character.name,
@@ -1023,7 +1023,6 @@ export class CharacterCreator {
         {
           skills: skillsData,
           drives: drivesData,
-          talents: character.talents || [],
           assets: assetsData
         }
       );
