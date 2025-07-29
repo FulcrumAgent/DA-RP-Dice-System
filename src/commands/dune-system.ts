@@ -18,12 +18,11 @@ import {
 } from 'discord.js';
 import { DiceEngine, DiceResult } from '../utils/dice-engines';
 import { DataManager } from '../utils/database';
-import { CharacterManager } from '../utils/character-manager';
+import { prismaCharacterManager } from '../utils/prisma-character-manager';
 import { SceneManager } from '../utils/scene-manager';
 import { logger } from '../utils/logger';
 
 const dataManager = new DataManager();
-const characterManager = new CharacterManager();
 const sceneManager = new SceneManager();
 
 export const duneSystemCommands = [
@@ -137,12 +136,13 @@ export async function handleDuneRollCommand(interaction: ChatInputCommandInterac
     
     if (characterName) {
       // Try to find specified character/NPC
-      const userCharacters = characterManager.getUserCharacters(userId, guildId);
-      character = userCharacters.find(c => c.name.toLowerCase() === characterName.toLowerCase());
+      const userCharacters = await prismaCharacterManager.getUserCharacters(userId, guildId);
+      character = userCharacters.find((c: any) => c.name.toLowerCase() === characterName.toLowerCase());
       
       if (!character) {
         // Try to find NPC
-        const npc = await characterManager.getNPCByName(characterName, guildId);
+        const guildNPCs = await prismaCharacterManager.getGuildNPCs(guildId);
+        const npc = guildNPCs.find((n: any) => n.name.toLowerCase() === characterName.toLowerCase());
         if (npc) {
           // Check NPC access permissions: only creator or scene host can use NPCs
           const isCreator = npc.createdBy === userId;
@@ -182,7 +182,7 @@ export async function handleDuneRollCommand(interaction: ChatInputCommandInterac
       }
     } else {
       // Use active character
-      character = characterManager.getUserActiveCharacter(userId, guildId);
+      character = await prismaCharacterManager.getUserActiveCharacter(userId, guildId);
       if (!character) {
         await interaction.reply({
           content: '❌ No active character found. Please specify a character or create one with `/sheet create`.\n\n💡 **Tip:** Use the character autocomplete to see available characters.',
@@ -517,7 +517,7 @@ function createImprovedDuneEmbed(
   const characterName = character.name;
   
   // Get avatar URL - use character's custom avatar or fallback to user's Discord avatar
-  const avatarUrl = characterManager.getAvatarUrl(character, user.displayAvatarURL());
+  const avatarUrl = character.avatarUrl || user.displayAvatarURL();
   
   const embed = new EmbedBuilder()
     .setTitle(`🎲 ${characterName} - ${skill} + ${drive} Test`)
@@ -646,15 +646,15 @@ export async function autocomplete(interaction: AutocompleteInteraction) {
     
     try {
       // Get user's characters
-      const userCharacters = characterManager.getUserCharacters(userId, guildId);
+      const userCharacters = await prismaCharacterManager.getUserCharacters(userId, guildId);
       
       // Get guild NPCs
-      const guildNPCs = await characterManager.getGuildNPCs(guildId);
+      const guildNPCs = await prismaCharacterManager.getGuildNPCs(guildId);
       
       // Combine and filter based on input
       const allOptions = [
-        ...userCharacters.map(char => ({ name: `${char.name} (Character)`, value: char.name })),
-        ...guildNPCs.map(npc => ({ name: `${npc.name} (NPC)`, value: npc.name }))
+        ...userCharacters.map((char: any) => ({ name: `${char.name} (Character)`, value: char.name })),
+        ...guildNPCs.map((npc: any) => ({ name: `${npc.name} (NPC)`, value: npc.name }))
       ];
       
       const filtered = allOptions.filter(option => 

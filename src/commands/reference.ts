@@ -7,7 +7,7 @@ import {
   ChatInputCommandInteraction, 
   EmbedBuilder
 } from 'discord.js';
-import { characterManager } from '../utils/character-manager';
+import { prismaCharacterManager } from '../utils/prisma-character-manager';
 import { logger } from '../utils/logger';
 
 export const data = new SlashCommandBuilder()
@@ -120,7 +120,8 @@ async function handleNPCLookup(interaction: ChatInputCommandInteraction) {
     return;
   }
   
-  const npc = await characterManager.getNPCByName(npcName, interaction.guild!.id);
+  const guildNPCs = await prismaCharacterManager.getGuildNPCs(interaction.guild!.id);
+  const npc = guildNPCs.find((n: any) => n.name.toLowerCase() === npcName.toLowerCase());
   
   if (!npc) {
     await interaction.reply({ 
@@ -148,8 +149,8 @@ async function handleNPCLookup(interaction: ChatInputCommandInteraction) {
   // Add skills if present
   if (npc.skills && npc.skills.length > 0) {
     const skills = npc.skills
-      .filter(skill => skill.value > 0)
-      .map(skill => `**${skill.name}:** ${skill.value}`)
+      .filter((skill: any) => skill.value > 0)
+      .map((skill: any) => `**${skill.name}:** ${skill.value}`)
       .join('\n');
     if (skills) {
       embed.addFields({ name: '🎯 Skills', value: skills, inline: true });
@@ -159,7 +160,7 @@ async function handleNPCLookup(interaction: ChatInputCommandInteraction) {
   // Add assets if present
   if (npc.assets && npc.assets.length > 0) {
     const assets = npc.assets
-      .map(asset => `**${asset.name}** (${asset.type}): ${asset.description}`)
+      .map((asset: any) => `**${asset.name}** (${asset.type}): ${asset.description}`)
       .join('\n');
     embed.addFields({ name: '🎒 Assets', value: assets.length > 1024 ? assets.substring(0, 1020) + '...' : assets, inline: false });
   }
@@ -175,7 +176,8 @@ async function handleAssetSearch(interaction: ChatInputCommandInteraction) {
     return;
   }
   
-  const assets = await characterManager.searchAssets(query, interaction.guild!.id);
+  // TODO: Implement asset search in PrismaCharacterManager
+  const assets: any[] = []; // Placeholder until asset search is implemented
   
   if (assets.length === 0) {
     await interaction.reply({ 

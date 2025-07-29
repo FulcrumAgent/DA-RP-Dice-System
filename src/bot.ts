@@ -54,7 +54,7 @@ import { serverSetupCommand, handleServerSetupCommand } from './commands/server-
 
 import * as referenceCommand from './commands/reference';
 import * as npcManagerCommand from './commands/npc-manager';
-import { handleSaveGeneratedNPC, handleSaveNPCNameModal } from './commands/npc-manager';
+// NPC handler functions removed - NPC system temporarily disabled
 import { avatarCommand, handleAvatarCommand, handleAvatarAutocomplete } from './commands/avatar-manager';
 
 
@@ -487,12 +487,12 @@ class DuneBot {
             break;
           }
           
-          // Save generated NPC button
+          // Save generated NPC button (disabled)
           if (interaction.customId.startsWith('save_generated_npc_')) {
-            const memberSaveNPC = interaction.member as GuildMember;
-            if (memberSaveNPC) {
-              await handleSaveGeneratedNPC(interaction);
-            }
+            await interaction.reply({
+              content: '❌ NPC saving is temporarily disabled during the database migration. This feature will be restored soon!',
+              ephemeral: true
+            });
             break;
           }
           
@@ -580,9 +580,12 @@ class DuneBot {
         const { handleEditingModal } = await import('./commands/character-sheet.js');
         await handleEditingModal(interaction);
       }
-      // Handle NPC name modal
+      // Handle NPC name modal (disabled)
       else if (interaction.customId.startsWith('save_npc_name_')) {
-        await handleSaveNPCNameModal(interaction, member);
+        await interaction.reply({
+          content: '❌ NPC name saving is temporarily disabled during the database migration. This feature will be restored soon!',
+          ephemeral: true
+        });
       }
       // Handle name edit modal (old system) - not implemented
       else if (interaction.customId === 'name_edit_modal') {
