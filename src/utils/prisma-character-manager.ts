@@ -534,6 +534,78 @@ export class PrismaCharacterManager {
 
     return { valid: true };
   }
+
+  // Validate image URL for avatars
+  validateImageUrl(url: string): { valid: boolean; error?: string } {
+    try {
+      const parsedUrl = new URL(url);
+      
+      // Check if it's HTTP/HTTPS
+      if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+        return { valid: false, error: 'URL must use HTTP or HTTPS protocol' };
+      }
+      
+      // Check file extension
+      const validExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
+      const pathname = parsedUrl.pathname.toLowerCase();
+      const hasValidExtension = validExtensions.some(ext => pathname.endsWith(ext));
+      
+      if (!hasValidExtension) {
+        return { valid: false, error: 'Image must be PNG, JPG, JPEG, WebP, or GIF format' };
+      }
+      
+      return { valid: true };
+    } catch (error) {
+      return { valid: false, error: 'Invalid URL format' };
+    }
+  }
+
+  // Set character avatar
+  async setCharacterAvatar(characterId: string, avatarUrl: string, userId: string): Promise<CharacterWithRelations> {
+    const character = await this.getCharacter(characterId);
+    if (!character) {
+      throw new Error('Character not found');
+    }
+    
+    if (character.userId !== userId) {
+      throw new Error('You can only set avatars for your own characters');
+    }
+    
+    return await this.updateCharacter(characterId, { avatarUrl });
+  }
+
+  // Remove character avatar
+  async removeCharacterAvatar(characterId: string, userId: string): Promise<CharacterWithRelations> {
+    const character = await this.getCharacter(characterId);
+    if (!character) {
+      throw new Error('Character not found');
+    }
+    
+    if (character.userId !== userId) {
+      throw new Error('You can only remove avatars from your own characters');
+    }
+    
+    return await this.updateCharacter(characterId, { avatarUrl: undefined });
+  }
+
+  // Get guild NPCs (placeholder - NPCs not yet implemented in Prisma schema)
+  async getGuildNPCs(guildId: string): Promise<any[]> {
+    // TODO: Implement NPC support in Prisma schema
+    logger.warn('NPC support not yet implemented in Prisma schema');
+    return [];
+  }
+
+  // Set NPC avatar (placeholder)
+  async setNPCAvatar(npcId: string, avatarUrl: string, userId: string): Promise<any> {
+    // TODO: Implement NPC support in Prisma schema
+    throw new Error('NPC support not yet implemented');
+  }
+
+  // Remove NPC avatar (placeholder)
+  async removeNPCAvatar(npcId: string, userId: string): Promise<any> {
+    // TODO: Implement NPC support in Prisma schema
+    throw new Error('NPC support not yet implemented');
+  }
 }
 
 // Export singleton instance

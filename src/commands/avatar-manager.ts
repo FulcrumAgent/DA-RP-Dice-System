@@ -118,12 +118,12 @@ async function handleSetAvatar(interaction: ChatInputCommandInteraction): Promis
     }
 
     // Check NPCs
-    const guildNPCs = await characterManager.getGuildNPCs(guildId);
-    const npc = guildNPCs.find(n => n.name.toLowerCase() === characterName.toLowerCase() && n.createdBy === userId);
+    const guildNPCs = await prismaCharacterManager.getGuildNPCs(guildId);
+    const npc = guildNPCs.find((n: any) => n.name.toLowerCase() === characterName.toLowerCase() && n.createdBy === userId);
     
     if (npc) {
       // Set NPC avatar
-      const updatedNPC = await characterManager.setNPCAvatar(npc.id, avatarUrl, userId);
+      const updatedNPC = await prismaCharacterManager.setNPCAvatar(npc.id, avatarUrl, userId);
       
       const embed = new EmbedBuilder()
         .setTitle('✅ Avatar Set Successfully')
@@ -167,7 +167,7 @@ async function handleRemoveAvatar(interaction: ChatInputCommandInteraction): Pro
     
     if (character) {
       // Remove character avatar
-      const updatedCharacter = await characterManager.removeCharacterAvatar(character.id, userId);
+      const updatedCharacter = await prismaCharacterManager.removeCharacterAvatar(character.id, userId);
       
       const embed = new EmbedBuilder()
         .setTitle('✅ Avatar Removed Successfully')
@@ -185,12 +185,12 @@ async function handleRemoveAvatar(interaction: ChatInputCommandInteraction): Pro
     }
 
     // Check NPCs
-    const guildNPCs = await characterManager.getGuildNPCs(guildId);
-    const npc = guildNPCs.find(n => n.name.toLowerCase() === characterName.toLowerCase() && n.createdBy === userId);
+    const guildNPCs = await prismaCharacterManager.getGuildNPCs(guildId);
+    const npc = guildNPCs.find((n: any) => n.name.toLowerCase() === characterName.toLowerCase() && n.createdBy === userId);
     
     if (npc) {
       // Remove NPC avatar
-      const updatedNPC = await characterManager.removeNPCAvatar(npc.id, userId);
+      const updatedNPC = await prismaCharacterManager.removeNPCAvatar(npc.id, userId);
       
       const embed = new EmbedBuilder()
         .setTitle('✅ Avatar Removed Successfully')
@@ -228,24 +228,24 @@ async function handleViewAvatar(interaction: ChatInputCommandInteraction): Promi
 
   try {
     // Find character or NPC (can view any character/NPC, not just owned ones)
-    const guildCharacters = await characterManager.getGuildCharacters(guildId);
-    const character = guildCharacters.find(c => c.name.toLowerCase() === characterName.toLowerCase());
+    const guildCharacters = await prismaCharacterManager.getUserCharacters('', guildId); // Get all guild characters
+    const character = guildCharacters.find((c: any) => c.name.toLowerCase() === characterName.toLowerCase());
     
     if (character) {
-      const avatarUrl = characterManager.getAvatarUrl(character, interaction.user.displayAvatarURL());
-      const isCustom = !!character.avatar;
+      const avatarUrl = character.avatarUrl || interaction.user.displayAvatarURL();
+      const isCustom = !!character.avatarUrl;
       
       const embed = new EmbedBuilder()
         .setTitle(`🖼️ ${character.name}'s Avatar`)
         .setColor(isCustom ? '#00ff00' : '#999999')
-        .setDescription(`**Character:** ${character.name}\n**Avatar:** ${character.avatar ? 'Custom avatar set' : 'Using Discord avatar (default)'}`)
+        .setDescription(`**Character:** ${character.name}\n**Avatar:** ${character.avatarUrl ? 'Custom avatar set' : 'Using Discord avatar (default)'}`)
         .setThumbnail(avatarUrl)
         .setTimestamp();
 
       if (isCustom) {
         embed.addFields({
           name: 'Custom Avatar URL',
-          value: `[View Full Size](${character.avatar})`,
+          value: `[View Full Size](${character.avatarUrl})`,
           inline: false
         });
       }
@@ -258,14 +258,14 @@ async function handleViewAvatar(interaction: ChatInputCommandInteraction): Promi
     }
 
     // Check NPCs
-    const guildNPCs = await characterManager.getGuildNPCs(guildId);
-    const npc = guildNPCs.find(n => n.name.toLowerCase() === characterName.toLowerCase());
+    const guildNPCs = await prismaCharacterManager.getGuildNPCs(guildId);
+    const npc = guildNPCs.find((n: any) => n.name.toLowerCase() === characterName.toLowerCase());
     
     if (npc) {
       // Get the creator's avatar for fallback
       const creator = await interaction.client.users.fetch(npc.createdBy);
-      const avatarUrl = characterManager.getAvatarUrl(npc, creator.displayAvatarURL());
-      const isCustom = !!npc.avatar;
+      const avatarUrl = npc.avatarUrl || creator.displayAvatarURL();
+      const isCustom = !!npc.avatarUrl;
       
       const embed = new EmbedBuilder()
         .setTitle(`🖼️ ${npc.name}'s Avatar (NPC)`)
@@ -324,8 +324,8 @@ export async function handleAvatarAutocomplete(interaction: AutocompleteInteract
     }
 
     // Get user's NPCs
-    const guildNPCs = await characterManager.getGuildNPCs(guildId);
-    const userNPCs = guildNPCs.filter(npc => npc.createdBy === userId);
+    const guildNPCs = await prismaCharacterManager.getGuildNPCs(guildId);
+    const userNPCs = guildNPCs.filter((npc: any) => npc.createdBy === userId);
     for (const npc of userNPCs) {
       if (npc.name.toLowerCase().includes(focusedValue)) {
         choices.push({
@@ -338,7 +338,7 @@ export async function handleAvatarAutocomplete(interaction: AutocompleteInteract
     // For view command, also include other characters/NPCs in the guild
     const subcommand = interaction.options.getSubcommand();
     if (subcommand === 'view') {
-      const guildCharacters = await characterManager.getGuildCharacters(guildId);
+      const guildCharacters = await prismaCharacterManager.getUserCharacters('', guildId);
       for (const character of guildCharacters) {
         if (character.userId !== userId && character.name.toLowerCase().includes(focusedValue)) {
           choices.push({
