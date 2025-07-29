@@ -144,6 +144,7 @@ model Npc {
   skills NpcSkill[]
   assets NpcAsset[]
   traits NpcTrait[]
+  drives NpcDrive[]
   
   @@index([guildId])
   @@index([createdBy])
@@ -192,6 +193,20 @@ model NpcTrait {
   
   @@index([npcId])
   @@map("npc_traits")
+}
+
+model NpcDrive {
+  id        String @id @default(uuid())
+  npcId     String @map("npc_id")
+  name      String
+  statement String
+  value     Int    @default(0)
+  
+  npc Npc @relation(fields: [npcId], references: [id], onDelete: Cascade)
+  
+  @@unique([npcId, name])
+  @@index([npcId])
+  @@map("npc_drives")
 }
 
 model MomentumPool {

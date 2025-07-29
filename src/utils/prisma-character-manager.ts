@@ -770,14 +770,14 @@ export class PrismaCharacterManager {
         });
         
         // Delete existing related data
-        await this.prisma.nPCSkill.deleteMany({ where: { npcId } });
-        await this.prisma.nPCAsset.deleteMany({ where: { npcId } });
-        await this.prisma.nPCTrait.deleteMany({ where: { npcId } });
-        await this.prisma.nPCDrive.deleteMany({ where: { npcId } });
+        await this.prisma.npcSkill.deleteMany({ where: { npcId } });
+        await this.prisma.npcAsset.deleteMany({ where: { npcId } });
+        await this.prisma.npcTrait.deleteMany({ where: { npcId } });
+        await this.prisma.npcDrive.deleteMany({ where: { npcId } });
         
         // Create new skills
         if (tierData.skills && tierData.skills.length > 0) {
-          await this.prisma.nPCSkill.createMany({
+          await this.prisma.npcSkill.createMany({
             data: tierData.skills.map((skill: any) => ({
               npcId,
               name: skill.name,
@@ -789,7 +789,7 @@ export class PrismaCharacterManager {
         
         // Create new assets
         if (tierData.assets && tierData.assets.length > 0) {
-          await this.prisma.nPCAsset.createMany({
+          await this.prisma.npcAsset.createMany({
             data: tierData.assets.map((asset: any) => ({
               npcId,
               name: asset.name,
@@ -803,7 +803,7 @@ export class PrismaCharacterManager {
         
         // Create new traits
         if (tierData.traits && tierData.traits.length > 0) {
-          await this.prisma.nPCTrait.createMany({
+          await this.prisma.npcTrait.createMany({
             data: tierData.traits.map((trait: any) => ({
               npcId,
               name: trait.name,
@@ -816,7 +816,7 @@ export class PrismaCharacterManager {
         
         // Create new drives (only for Nemesis tier)
         if (tierData.tier === 'nemesis' && tierData.drives && tierData.drives.length > 0) {
-          await this.prisma.nPCDrive.createMany({
+          await this.prisma.npcDrive.createMany({
             data: tierData.drives.map((drive: any) => ({
               npcId,
               name: drive.name,
