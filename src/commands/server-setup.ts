@@ -38,259 +38,107 @@ Dune's RPG system is fast, cinematic, and dramatic—but running it online can b
   },
   'Storyguide/GM Guide': {
     title: 'Storyguide/GM Guide',
-    content: `# **STORYGUIDE/GM ROLE**
-- Run scenes, challenges, and story beats for the group.
-- Control all NPCs, adversaries, and environmental hazards.
-- Set the difficulty and consequences for rolls.
-- Award or use Momentum and Threat.
-- Create and manage scenes using the bot's commands.
-- Keep the action moving, make rulings, and spotlight character Drives and Statements.
+    content: `# **GM ESSENTIALS**
+- Run scenes, set difficulty, control NPCs
+- Manage Momentum (player pool) and Threat (GM pool)
+- Use /scene host in <#1399805471866617927> to start scenes
+- Players join with /scene join
 
+# **RUNNING ROLLS**
+1. Set Difficulty (1=easy, 2=standard, 3+=hard)
+2. Ask for: */dune-roll skill:[Skill] drive:[Drive] difficulty:[#]*
+3. Extra successes = Momentum, rolling 20 = Complication
 
-# **SETTING UP A SCENE**
-1. In <#1399805471866617927>, type:
-/scene host
+# **NPC COMMANDS**
+- */npc create* - Make major NPCs
+- */npc roll basic* - Quick NPC rolls
+- */npc roll attack/resist* - Combat rolls
+- */npc view [name]* - Check NPC stats
 
-2. The bot creates a new thread for the scene. Announce who's involved and set the opening situation.
-
-3. Players join the scene with:
-/scene join
-
-4. List all active scenes or see participants:
-/scene list
-/scene status
-
-
-# **RUNNING CHALLENGES**
-1. Set the Difficulty (1 = easy, 2 = standard, 3+ = hard).
-
-2. Tell players which Skill and Drive you think are most relevant.
-
-3. Ask for rolls using:
-*/dune-roll skill:[Skill] drive:[Drive] difficulty:[#]*
-
-4. Watch for Momentum (extra successes) and Threat (players can add dice by giving you Threat).
-
-5. Narrate the results. If a player rolls a 20, add a Complication!
-
-
-# **NPC MANAGEMENT**
-- Create new NPCs for major or recurring adversaries:
-
-    */npc create*
-    */npc generate*
-- For quick rolls (supporting characters or minor enemies), use:
-
-    */npc roll basic*
-    */npc roll skill [skill] [difficulty] [bonus]*
-- For combat or dramatic moments, use:
-
-    */npc roll attack*
-    */npc roll resist*
-- View or edit NPC stats:
-
-    */npc view [name]*
-    */npc edit*
-
-
-# **MOMENTUM AND THREAT**
-*Momentum (player pool):*
-    - Players earn Momentum for extra successes.
-    - Can be spent for bonus dice, info, improved results, or team effects.
-    - Track with /momentum or use the scene's resources command.
-
-*Threat (GM pool):*
-    - Players give you Threat to buy extra dice.
-    - You spend Threat to raise difficulty, introduce hazards, or complicate scenes.
-    - Announce when you use Threat for full transparency.
-
+# **MOMENTUM & THREAT**
+- **Momentum:** Players earn from extra successes, spend for bonuses
+- **Threat:** Players give you Threat for extra dice, you spend for complications
+- Track with */momentum* and */scene resources*
 
 # **COMPLICATIONS**
-- If any die rolls a 20, a Complication happens.
-- Complications can make the scene harder, add new problems, or create dramatic twists.
-- *Examples:* An alarm is triggered, a sandstorm hits, a weapon jams, backup arrives.
-- Make Complications meaningful but fair—don't punish, add drama!
-
+When players roll 20: add drama, not punishment!
+*Examples:* Alarms, weather, equipment issues, reinforcements
 
 # **BEST PRACTICES**
-- Use clear, concise narration and spotlight characters' Drives and Statements.
-- Ask players what their Drives mean to them in tough situations.
-- Keep scenes moving—don't sweat every rule.
-- Use the bot for all dice and sheet management, focus your energy on story and characters.
-- Encourage teamwork and clever solutions, not just dice rolls.
-- Make Threat and Momentum visible to everyone.`
+- Spotlight character Drives and Statements
+- Keep scenes moving, don't sweat every rule
+- Use bot for mechanics, focus on story
+- Make Momentum/Threat visible to all
+- Encourage teamwork and creative solutions`
   },
   'Command Reference': {
     title: 'Command Reference',
-    content: `# **LOOKUP & HELP COMMANDS**
-- */dune-help*
-   Shows a summary of all major commands and core rules. Great for new players.
-- */dune-reference*
-   Quick rules and Dune-specific term lookups.
-- */lookup asset [asset name or partial]*
-   Get info about an asset (gear, contact, etc).
-- */lookup npc [name or tag]*
-   Get info about a non-player character.
-- */lookup rules [topic]*
-   Find a rule summary by keyword or category.
-- */lookup skill [skill name]*
-   Shows an explanation of a specific skill.
-- */roll-help*
-   Quick help on how dice rolling works and available options.
+    content: `# **HELP & LOOKUP**
+- */dune-help* - Command summary and core rules
+- */dune-reference* - Quick rules lookup
+- */lookup asset/npc/rules/skill [name]* - Get info
+- */roll-help* - Dice rolling help
 
+# **DICE ROLLING**
+- */roll* - Standard dice (3d6+2, 2d10, etc.)
+- */roll-exploding* - Exploding dice
+- */roll-wod* - World of Darkness pools
+- */dune-roll* - Dune system rolls with momentum
 
-# **DICE ROLLING COMMANDS**
-- /roll
-   Roll standard dice with custom notation.
-   Examples: /roll 3d6+2, /roll 2d10, /roll 1d20+5
-- /roll-exploding
-   Roll exploding dice (when the max result is rolled, that die is rolled again and added).
-   *Example:* /roll-exploding 4d6
-- /roll-wod
-   Roll a World of Darkness-style dice pool.
-   *Example:* /roll-wod 7 (roll 7d10, count successes by WoD rules)
-- /roll-help
-   Show help and examples for all supported dice-rolling systems.
+# **CHARACTER SHEETS**
+- */sheet create* - New character sheet
+- */sheet edit* - Update character details
+- */sheet view* - Display character sheet
+- */sheet delete* - Remove character (permanent)
+- */character avatar set* - Set custom avatar
 
+# **NPC MANAGEMENT**
+- */npc create/edit/delete* - Manage NPCs
+- */npc list/view [name]* - Browse NPCs
+- */npc generate* - Random NPC creation
+- */npc roll attack/basic/resist/skill* - NPC rolls
 
-## **CHARACTER SHEET COMMANDS**
-- */sheet create*
-  Start a new character sheet for your PC. The bot will walk you through entering name, skills, drives, drive statements, and assets.
-- */sheet edit*
-  Update details on your character sheet—skills, drives, drive statements, avatar, or assets.
-- */sheet view*
-  Displays your current character sheet in a formatted embed (shows avatar, stats, assets).
-- */sheet delete*
-  Permanently remove your character sheet (warning: can't be undone).
-- */character avatar set [upload image or URL]*
-  Set a custom avatar for your character sheet.
+# **SCENES & STORY**
+- */scene host* - Start new scene thread
+- */scene join/list/status* - Scene participation
+- */scene end/pass* - Scene management
+- */scene resources* - View momentum/threat
+- */momentum* - Manage momentum pool
 
-
-# **NPC MANAGEMENT COMMANDS**
-- */npc create*
-  Start a new NPC (used by Storyguide/GM or for background characters).
-- */npc edit*
-  Change an NPC's details, stats, or avatar.
-- */npc list*
-  List all current NPCs in the game/server.
-- */npc view [NPC name]*
-  View the sheet/stats for a selected NPC.
-- */npc delete*
-  Remove an NPC from the game.
-- */npc generate*
-  Randomly create a supporting character or adversary for fast play.
-
-
-# **SCENE & STORY COMMANDS**
-- */scene host*
-  Start (host) a new scene. Creates a scene thread for active play.
-- */scene join*
-  Join an open scene (thread) as a participant.
-- */scene list*
-  Show all active scenes.
-- */scene end*
-  End and archive the current scene.
-- */scene pass*
-  Pass scene hosting duties to another participant in the scene.
-  Use this when you want to hand off GM/Storyguide control, let another player narrate, or switch perspectives during an active scene.
-- */scene resources*
-  View scene-specific resources (momentum, threat, assets in play).
-- */scene status*
-  Shows current status, active PCs/NPCs, and key scene info.
-
-
-# **IN-SCENE & NPC ROLL COMMANDS**
-- */momentum*
-  Display or update current momentum pool for the scene.
-- */npc roll attack*
-  Roll an attack for a specified NPC against a target or defense.
-- */npc roll basic*
-  Make a basic skill/drive roll for an NPC (e.g., resisting a PC action).
-- */npc roll resist*
-  NPC attempts to resist or defend against a PC action.
-- */npc roll skill [skill] [difficulty] [bonus]*
-  Run a custom skill/drive test for any NPC.`
+*Use commands without parameters for detailed help!*`
   },
   'Key Concepts & Core Mechanics': {
     title: 'Key Concepts & Core Mechanics',
-    content: `# **SKILLS AND DRIVES**
-Every character in Dune: Awakened Adventures has 5 Skills and 5 Drives.
+    content: `# **SKILLS & DRIVES**
+Every character has 5 Skills and 5 Drives.
 
-## **SKILLS:**
-- Battle: Fighting, tactics, physical conflict
-- Communicate: Persuasion, social skills, deception, reading people
-- Discipline: Willpower, focus, resisting fear or temptation
-- Move: Stealth, agility, climbing, running, dodging
-- Understand: Investigation, knowledge, deduction, insight
+**SKILLS:** Battle, Communicate, Discipline, Move, Understand
+**DRIVES:** Duty, Faith, Justice, Power, Truth
 
-## **DRIVES:**
-- Duty: Loyalty, responsibility, following orders or codes
-- Faith: Belief in religion, prophecy, fate, or personal conviction
-- Justice: Sense of fairness, righting wrongs, moral choices
-- Power: Ambition, strength of will, seeking control or influence
-- Truth: Pursuit of honesty, knowledge, clarity, uncovering secrets
+# **2D20 SYSTEM BASICS**
+1. Choose relevant Skill + Drive
+2. Add scores = TARGET NUMBER
+3. Roll 2d20 (can add up to 3 more dice)
+4. Each die ≤ Target = 1 SUCCESS
+5. Each die ≤ Skill = 2 SUCCESSES (critical)
+6. Meet GM's Difficulty = Success!
+7. Extra successes = MOMENTUM
+8. Rolling 20 = COMPLICATION
 
----
+# **KEY TERMS**
+- **TARGET:** Skill + Drive score
+- **MOMENTUM:** Earned from extra successes, spend for bonuses
+- **THREAT:** GM resource, players can give Threat for extra dice
+- **COMPLICATIONS:** Bad things when rolling 20s
+- **ASSETS:** Gear/contacts that provide bonuses
 
-# **ROLLING DICE: THE 2D20 SYSTEM**
-Most actions are resolved with a Skill + Drive roll using two twenty-sided dice (2d20).
+# **EXAMPLE ROLL**
+*Sneak past guards (Move 3 + Duty 2 = Target 5)*
+- Roll 2d20: get 4, 17
+- 4 ≤ 5 = success, 4 ≤ 3 = critical (2 successes total)
+- If Difficulty was 1, you succeed with 1 Momentum!
 
-## **BASIC STEPS:**
-1. Choose the most relevant Skill and Drive for the action.
-2. Add your Skill score and Drive score to get your TARGET NUMBER.
-3. Roll 2d20 (you may roll more dice if you spend Momentum or take on Threat).
-4. Each die that rolls equal to or under your TARGET NUMBER counts as a SUCCESS.
-5. If you roll equal to or under your Skill score, you get a CRITICAL SUCCESS (counts as 2).
-6. The GM sets a DIFFICULTY (number of successes needed).
-7. If you meet or exceed the DIFFICULTY, you succeed! Extra successes become MOMENTUM.
-8. Rolling a 20 on any die is a COMPLICATION—something goes wrong, even if you succeed.
-
-## **NOTES:**
-- Most rolls use 2d20, but you can add up to 3 more dice (max 5d20) by spending Momentum or accepting Threat.
-- GMs and players can use "assets" (gear, information, support) to get bonuses.
-
-## **COMMON TERMS:**
-- TARGET NUMBER = Skill + Drive
-- MOMENTUM = Bonus points earned from extra successes, spent for more dice or effects
-- THREAT = GM's "currency" for raising tension or causing trouble
-- DIFFICULTY = Number of successes needed to accomplish the task
-
----
-
-# **CHARACTER SHEET BASICS**
-A character sheet contains everything needed to play:
-
-- Name and (optional) Avatar
-- Five Skills (Battle, Communicate, Discipline, Move, Understand), each rated 4–8 for most PCs
-- Five Drives (Duty, Faith, Justice, Power, Truth), each rated 4–8 for most PCs
-- Drive Statements: Short sentences or beliefs tied to each Drive
-- Assets: Gear, contacts, information, special training, or relationships used in play
-- (Optional) Traits, Talents, and Notes: Distinctive abilities or background info
-- Current Momentum, Stress, or Harm (tracked as needed during sessions)
-
----
-
-# **EXAMPLE TURN: HOW A ROLL WORKS**
-1. The GM asks you to sneak past a Harkonnen patrol.
-2. You pick the most relevant Skill and Drive: Move (6) + Duty (7) = TARGET NUMBER 13.
-3. The GM sets Difficulty 2 (you need 2 successes).
-4. You roll 2d20: you get a 10 and a 6.
-    - Both are under 13 (your Target), so both are successes!
-    - The 6 is also equal to or under your Move score, so it's a CRITICAL SUCCESS (counts as 2).
-5. You score 3 successes total—enough to succeed and earn 1 Momentum (3 - 2 = 1).
-6. If either die had rolled a 20, a complication would be introduced by the GM.
-
----
-
-# **DUNE TERMS GLOSSARY**
-- *Momentum:* Bonus points earned by getting more successes than you need, spent for extra dice or effects.
-- *Threat:* GM's pool for causing trouble, raising stakes, or complicating actions.
-- *Asset:* Any item, person, piece of info, or resource your character uses.
-- *Trait:* Special features or story tags that define your character (e.g., "Fremen," "Bene Gesserit Trained").
-- *Complication:* Bad or unexpected event caused by rolling a 20.
-- *Drive Statement:* Your character's personal belief or motto tied to each Drive.
-- *NPC:* Non-player character (controlled by GM or bot).
-- *GM / Storyguide:* The game master or narrator, running scenes and challenges.`
+*Use /dune-roll for all game rolls!*`
   },
   'Quick Start Guide': {
     title: 'Quick Start Guide',
