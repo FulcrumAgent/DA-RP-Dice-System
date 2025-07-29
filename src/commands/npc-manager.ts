@@ -16,7 +16,7 @@ import {
   ModalSubmitInteraction
 } from 'discord.js';
 import { logger } from '../utils/logger';
-import { prismaCharacterManager } from '../utils/prisma-character-manager';
+import { prismaCharacterManager, PrismaCharacterManager } from '../utils/prisma-character-manager';
 import { DuneDiceEngine } from '../utils/dune-dice';
 
 export const data = new SlashCommandBuilder()
@@ -128,7 +128,8 @@ export const data = new SlashCommandBuilder()
           .setRequired(true)
           .addChoices(
             { name: 'Basic Roll', value: 'basic' },
-            { name: 'Skill + Drive', value: 'skill' },
+            { name: 'Skill Roll', value: 'skill' },
+            { name: 'Skill + Drive (Nemesis only)', value: 'skill_drive' },
             { name: 'Attack', value: 'attack' },
             { name: 'Defend', value: 'defend' }
           ))
@@ -145,7 +146,7 @@ export const data = new SlashCommandBuilder()
           .setAutocomplete(true))
       .addStringOption(option =>
         option.setName('drive')
-          .setDescription('Drive to use (for skill rolls)')
+          .setDescription('Drive to use (Nemesis NPCs only)')
           .setRequired(false)
           .setAutocomplete(true))
       .addStringOption(option =>
@@ -158,7 +159,7 @@ export const data = new SlashCommandBuilder()
           .setDescription('Description of the action')
           .setRequired(false)));
 
-// Helper function to generate NPC stats based on tier
+// Helper function to generate NPC stats based on tier - now uses PrismaCharacterManager
 function generateNPCStatsForTier(tier: 'minion' | 'toughened' | 'nemesis') {
   const baseAttributes = {
     muscle: 8,
@@ -276,8 +277,8 @@ async function handleCreateNPC(interaction: ChatInputCommandInteraction, member:
   await interaction.deferReply();
 
   try {
-    // Generate base stats for the tier
-    const baseStats = generateNPCStatsForTier(tier as 'minion' | 'toughened' | 'nemesis');
+    // Generate base stats for the tier using PrismaCharacterManager
+    const baseStats = prismaCharacterManager.generateNPCStatsForTier(tier as 'minion' | 'toughened' | 'nemesis');
     
     // Create the NPC using Prisma
     const npc = await prismaCharacterManager.createNPC(
@@ -289,7 +290,9 @@ async function handleCreateNPC(interaction: ChatInputCommandInteraction, member:
       baseStats.skills,
       baseStats.assets,
       baseStats.traits,
-      member.id
+      baseStats.drives, // Include drives (empty for minion/toughened, populated for nemesis)
+      member.id,
+      description || undefined // Include description
     );
 
     const embed = new EmbedBuilder()
@@ -323,7 +326,7 @@ async function handleGenerateNPC(interaction: ChatInputCommandInteraction, membe
     const generatedConcept = concept || generateRandomConcept();
     
     // Generate base stats for the tier
-    const baseStats = generateNPCStatsForTier(tier);
+    const baseStats = prismaCharacterManager.generateNPCStatsForTier(tier);
     
     // Add some randomization to make it more interesting
     const randomizedStats = addRandomizationToStats(baseStats, tier);
@@ -381,7 +384,9 @@ async function handleGenerateNPC(interaction: ChatInputCommandInteraction, membe
         randomizedStats.skills,
         randomizedStats.assets,
         randomizedStats.traits,
-        member.id
+        randomizedStats.drives, // Include drives (empty for minion/toughened, populated for nemesis)
+        member.id,
+        undefined // No description for generated NPCs
       );
       
       embed.setFooter({ text: `✅ NPC saved as "${savedNPC.name}" | Use /npc view to see details` });
@@ -523,16 +528,61 @@ async function handleEditNPC(interaction: ChatInputCommandInteraction, member: G
       return;
     }
 
-    await prismaCharacterManager.updateNPC(npc.id, field, value, member.id);
+    // Handle tier changes specially - they require stat regeneration
+    if (field === 'tier') {
+      const newTier = value as 'minion' | 'toughened' | 'nemesis';
+      if (!['minion', 'toughened', 'nemesis'].includes(newTier)) {
+        await interaction.editReply({
+          content: '❌ Invalid tier. Must be one of: minion, toughened, nemesis'
+        });
+        return;
+      }
 
-    const embed = new EmbedBuilder()
-      .setColor(0x00FF00)
-      .setTitle(`✅ NPC Updated: ${npc.name}`)
-      .setDescription(`**${field}** has been updated to: ${value}`)
-      .setFooter({ text: 'Use /npc view to see all changes' })
-      .setTimestamp();
+      // Generate new stats for the target tier
+      const newStats = prismaCharacterManager.generateNPCStatsForTier(newTier);
+      
+      // Update the NPC with new tier and regenerated stats
+      const updatedNPC = await prismaCharacterManager.updateNPC(
+        npc.id, 
+        'tier_change', 
+        JSON.stringify({
+          tier: newTier,
+          attributes: newStats.attributes,
+          skills: newStats.skills,
+          drives: newStats.drives,
+          assets: newStats.assets,
+          traits: newStats.traits
+        }), 
+        member.id
+      );
 
-    await interaction.editReply({ embeds: [embed] });
+      const tierInfo = PrismaCharacterManager.getTierInfo(newTier);
+      const embed = new EmbedBuilder()
+        .setColor(tierInfo.color)
+        .setTitle(`✅ NPC Tier Changed: ${npc.name}`)
+        .setDescription(`**${npc.name}** has been upgraded/downgraded to **${tierInfo.displayName}** tier.\n\n${tierInfo.description}\n\n⚠️ **Stats have been regenerated** to match the new tier. Use \`/npc view ${npc.name}\` to see the updated stats.`)
+        .addFields(
+          { name: '🔄 Previous Tier', value: npc.tier, inline: true },
+          { name: '🎯 New Tier', value: newTier, inline: true },
+          { name: '📊 Changes', value: newTier === 'nemesis' ? 'Added drives and enhanced stats' : newTier === 'minion' ? 'Simplified stats, removed drives' : 'Enhanced stats, no drives', inline: false }
+        )
+        .setFooter({ text: 'Tier change completed with stat regeneration' })
+        .setTimestamp();
+
+      await interaction.editReply({ embeds: [embed] });
+    } else {
+      // Handle regular field updates
+      await prismaCharacterManager.updateNPC(npc.id, field, value, member.id);
+
+      const embed = new EmbedBuilder()
+        .setColor(0x00FF00)
+        .setTitle(`✅ NPC Updated: ${npc.name}`)
+        .setDescription(`**${field}** has been updated to: ${value}`)
+        .setFooter({ text: 'Use /npc view to see all changes' })
+        .setTimestamp();
+
+      await interaction.editReply({ embeds: [embed] });
+    }
     logger.info(`NPC ${npc.name} updated by ${member.user.tag}: ${field} = ${value}`);
   } catch (error) {
     logger.error('Error editing NPC:', error);
@@ -578,6 +628,13 @@ async function handleDeleteNPC(interaction: ChatInputCommandInteraction, member:
   }
 }
 
+/**
+ * Handle NPC roll commands with tier-specific behavior
+ * - Minion/Toughened: Basic rolls using skill + attribute only
+ * - Nemesis: Full rolls including skill + drive combinations
+ * 
+ * @param interaction - Discord slash command interaction
+ */
 async function handleNPCRoll(interaction: ChatInputCommandInteraction) {
   const npcName = interaction.options.getString('name', true);
   const rollType = interaction.options.getString('type', true);
@@ -605,7 +662,8 @@ async function handleNPCRoll(interaction: ChatInputCommandInteraction) {
     // Create a mock character object for the DuneDiceEngine
     const mockCharacter = {
       attributes: npc.attributes,
-      skills: npc.skills || []
+      skills: npc.skills || [],
+      drives: npc.drives || []
     };
 
     switch (rollType) {
@@ -644,6 +702,49 @@ async function handleNPCRoll(interaction: ChatInputCommandInteraction) {
           { difficulty }
         );
         rollDescription = `${npc.name} uses ${skillName} (${skill.value})`;
+        break;
+        
+      case 'skill_drive':
+        // Skill + Drive rolls are only available for Nemesis tier NPCs
+        if (npc.tier !== 'nemesis') {
+          await interaction.editReply({
+            content: `❌ Skill + Drive rolls are only available for Nemesis tier NPCs. ${npc.name} is a ${npc.tier} tier NPC.`
+          });
+          return;
+        }
+        
+        if (!skillName || !driveName) {
+          await interaction.editReply({
+            content: '❌ Both skill and drive are required for skill + drive rolls.'
+          });
+          return;
+        }
+        
+        const skillForDrive = npc.skills?.find((s: any) => s.name.toLowerCase() === skillName.toLowerCase());
+        if (!skillForDrive) {
+          await interaction.editReply({
+            content: `❌ NPC ${npc.name} doesn't have the skill "${skillName}".`
+          });
+          return;
+        }
+        
+        const drive = npc.drives?.find((d: any) => d.name.toLowerCase() === driveName.toLowerCase());
+        if (!drive) {
+          await interaction.editReply({
+            content: `❌ NPC ${npc.name} doesn't have the drive "${driveName}".`
+          });
+          return;
+        }
+        
+        // For skill + drive rolls, use the drive name as the "skill" parameter in DuneDiceEngine
+        const attributeForDrive = getAttributeNameForSkill(skillName);
+        rollResult = DuneDiceEngine.performTest(
+          mockCharacter as any,
+          attributeForDrive,
+          driveName, // Use drive name for the engine
+          { difficulty }
+        );
+        rollDescription = `${npc.name} uses ${skillName} (${skillForDrive.value}) + ${driveName} (${drive.value})`;
         break;
         
       case 'attack':
@@ -764,6 +865,14 @@ function createNPCEmbed(npc: any): EmbedBuilder {
     embed.addFields({ name: '✨ Traits', value: traitsText, inline: false });
   }
 
+  // Only show drives for Nemesis tier NPCs
+  if (npc.tier === 'nemesis' && npc.drives && npc.drives.length > 0) {
+    const drivesText = npc.drives
+      .map((drive: any) => `**${drive.name}:** ${drive.value} - *${drive.statement}*`)
+      .join('\n') || 'None';
+    embed.addFields({ name: '🔥 Drives', value: drivesText, inline: false });
+  }
+
   if (npc.avatarUrl) {
     embed.setThumbnail(npc.avatarUrl);
   }
@@ -793,7 +902,7 @@ export async function autocomplete(interaction: any) {
       logger.error('Error in NPC autocomplete:', error);
       await interaction.respond([]);
     }
-  } else if (focusedOption.name === 'skill' || focusedOption.name === 'drive' || focusedOption.name === 'asset') {
+  } else if (focusedOption.name === 'skill' || focusedOption.name === 'asset' || focusedOption.name === 'drive') {
     try {
       // Get the selected NPC name from the command options
       const npcName = interaction.options.getString('name');
@@ -819,15 +928,6 @@ export async function autocomplete(interaction: any) {
             name: `${skill.name} (${skill.value})`,
             value: skill.name
           }));
-      } else if (focusedOption.name === 'drive') {
-        // NPCs typically don't have drives, but we'll check anyway
-        options = (npc.drives || [])
-          .filter((drive: any) => drive.name.toLowerCase().includes(focusedOption.value.toLowerCase()))
-          .slice(0, 25)
-          .map((drive: any) => ({
-            name: `${drive.name} (${drive.value || 'N/A'})`,
-            value: drive.name
-          }));
       } else if (focusedOption.name === 'asset') {
         // Filter assets/weapons
         options = (npc.assets || [])
@@ -837,6 +937,23 @@ export async function autocomplete(interaction: any) {
             name: `${asset.name} (${asset.type})`,
             value: asset.name
           }));
+      } else if (focusedOption.name === 'drive') {
+        // Filter drives - only available for Nemesis tier NPCs
+        if (npc.tier === 'nemesis') {
+          options = (npc.drives || [])
+            .filter((drive: any) => drive.name.toLowerCase().includes(focusedOption.value.toLowerCase()))
+            .slice(0, 25)
+            .map((drive: any) => ({
+              name: `${drive.name} (${drive.value})`,
+              value: drive.name
+            }));
+        } else {
+          // No drives available for non-Nemesis NPCs
+          options = [{
+            name: `Drives only available for Nemesis tier NPCs (${npc.name} is ${npc.tier})`,
+            value: 'unavailable'
+          }];
+        }
       }
 
       await interaction.respond(options);

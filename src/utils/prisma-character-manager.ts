@@ -598,7 +598,8 @@ export class PrismaCharacterManager {
         include: {
           skills: true,
           assets: true,
-          traits: true
+          traits: true,
+          drives: true // Include drives for Nemesis NPCs
         },
         orderBy: { createdAt: 'desc' }
       });
@@ -621,7 +622,8 @@ export class PrismaCharacterManager {
         include: {
           skills: true,
           assets: true,
-          traits: true
+          traits: true,
+          drives: true // Include drives for Nemesis NPCs
         }
       });
       
@@ -632,7 +634,7 @@ export class PrismaCharacterManager {
     }
   }
 
-  // Create a new NPC
+  // Create a new NPC with tier-specific fields
   async createNPC(
     name: string,
     guildId: string,
@@ -649,51 +651,76 @@ export class PrismaCharacterManager {
     skills: Array<{ name: string; value: number; focus?: string[] }>,
     assets: Array<{ name: string; type: string; description?: string; qualities?: string[]; cost?: number }>,
     traits: Array<{ name: string; type: string; description?: string; mechanical?: string }>,
-    createdBy: string
+    drives: Array<{ name: string; statement: string; value: number }> = [], // Only for Nemesis tier
+    createdBy: string,
+    description?: string
   ): Promise<any> {
     try {
-      const npc = await this.prisma.npc.create({
-        data: {
-          name,
-          guildId,
-          concepts,
-          tier,
-          createdBy,
-          attrMuscle: attributes.muscle,
-          attrMove: attributes.move,
-          attrIntellect: attributes.intellect,
-          attrAwareness: attributes.awareness,
-          attrCommunication: attributes.communication,
-          attrDiscipline: attributes.discipline,
-          skills: {
-            create: skills.map(skill => ({
-              name: skill.name,
-              value: skill.value,
-              focus: skill.focus || []
-            }))
-          },
-          assets: {
-            create: assets.map(asset => ({
-              name: asset.name,
-              type: asset.type as any,
-              description: asset.description,
-              qualities: asset.qualities || [],
-              cost: asset.cost
-            }))
-          },
-          traits: {
-            create: traits.map(trait => ({
-              name: trait.name,
-              type: trait.type as any,
-              description: trait.description,
-              mechanical: trait.mechanical
-            }))
-          }
+      // Validate tier-specific data
+      if (tier === 'nemesis' && drives.length === 0) {
+        logger.warn(`Creating Nemesis NPC "${name}" without drives - this may not be intended`);
+      }
+      if ((tier === 'minion' || tier === 'toughened') && drives.length > 0) {
+        logger.warn(`Creating ${tier} NPC "${name}" with drives - drives will be ignored for this tier`);
+      }
+
+      const npcData: any = {
+        name,
+        guildId,
+        concepts,
+        tier,
+        createdBy,
+        description,
+        attrMuscle: attributes.muscle,
+        attrMove: attributes.move,
+        attrIntellect: attributes.intellect,
+        attrAwareness: attributes.awareness,
+        attrCommunication: attributes.communication,
+        attrDiscipline: attributes.discipline,
+        skills: {
+          create: skills.map(skill => ({
+            name: skill.name,
+            value: skill.value,
+            focus: skill.focus || []
+          }))
         },
+        assets: {
+          create: assets.map(asset => ({
+            name: asset.name,
+            type: asset.type as any,
+            description: asset.description,
+            qualities: asset.qualities || [],
+            cost: asset.cost
+          }))
+        },
+        traits: {
+          create: traits.map(trait => ({
+            name: trait.name,
+            type: trait.type as any,
+            description: trait.description,
+            mechanical: trait.mechanical
+          }))
+        }
+      };
+
+      // Only add drives for Nemesis tier NPCs
+      if (tier === 'nemesis' && drives.length > 0) {
+        npcData.drives = {
+          create: drives.map(drive => ({
+            name: drive.name,
+            statement: drive.statement,
+            value: drive.value
+          }))
+        };
+      }
+
+      const npc = await this.prisma.npc.create({
+        data: npcData,
         include: {
           skills: true,
           assets: true,
-          traits: true
+          traits: true,
+          drives: true // Include drives in the response
         }
       });
       
@@ -721,7 +748,100 @@ export class PrismaCharacterManager {
         throw new Error('You can only edit NPCs you created');
       }
       
-      // Map field names to database columns
+      // Handle special tier change with stat regeneration
+      if (field === 'tier_change') {
+        const tierData = JSON.parse(value);
+        const updateData = {
+          tier: tierData.tier,
+          attributes: tierData.attributes,
+          lastUpdated: new Date().toISOString()
+        };
+        
+        // Update the NPC with new tier and stats
+        const updatedNPC = await this.prisma.npc.update({
+          where: { id: npcId },
+          data: updateData,
+          include: {
+            skills: true,
+            assets: true,
+            traits: true,
+            drives: true
+          }
+        });
+        
+        // Delete existing related data
+        await this.prisma.nPCSkill.deleteMany({ where: { npcId } });
+        await this.prisma.nPCAsset.deleteMany({ where: { npcId } });
+        await this.prisma.nPCTrait.deleteMany({ where: { npcId } });
+        await this.prisma.nPCDrive.deleteMany({ where: { npcId } });
+        
+        // Create new skills
+        if (tierData.skills && tierData.skills.length > 0) {
+          await this.prisma.nPCSkill.createMany({
+            data: tierData.skills.map((skill: any) => ({
+              npcId,
+              name: skill.name,
+              value: skill.value,
+              focus: skill.focus || []
+            }))
+          });
+        }
+        
+        // Create new assets
+        if (tierData.assets && tierData.assets.length > 0) {
+          await this.prisma.nPCAsset.createMany({
+            data: tierData.assets.map((asset: any) => ({
+              npcId,
+              name: asset.name,
+              type: asset.type,
+              description: asset.description || '',
+              qualities: asset.qualities || [],
+              cost: asset.cost || 0
+            }))
+          });
+        }
+        
+        // Create new traits
+        if (tierData.traits && tierData.traits.length > 0) {
+          await this.prisma.nPCTrait.createMany({
+            data: tierData.traits.map((trait: any) => ({
+              npcId,
+              name: trait.name,
+              type: trait.type,
+              description: trait.description || '',
+              mechanical: trait.mechanical || ''
+            }))
+          });
+        }
+        
+        // Create new drives (only for Nemesis tier)
+        if (tierData.tier === 'nemesis' && tierData.drives && tierData.drives.length > 0) {
+          await this.prisma.nPCDrive.createMany({
+            data: tierData.drives.map((drive: any) => ({
+              npcId,
+              name: drive.name,
+              statement: drive.statement,
+              value: drive.value
+            }))
+          });
+        }
+        
+        // Fetch the updated NPC with all relations
+        const finalNPC = await this.prisma.npc.findUnique({
+          where: { id: npcId },
+          include: {
+            skills: true,
+            assets: true,
+            traits: true,
+            drives: true
+          }
+        });
+        
+        logger.info(`Updated NPC ${npcId} tier to ${tierData.tier} with regenerated stats`);
+        return this.formatNPCForLegacyCompatibility(finalNPC);
+      }
+      
+      // Map field names to database columns for regular updates
       const fieldMap: { [key: string]: string } = {
         'name': 'name',
         'concept': 'concepts',
@@ -744,7 +864,8 @@ export class PrismaCharacterManager {
         include: {
           skills: true,
           assets: true,
-          traits: true
+          traits: true,
+          drives: true // Include drives for Nemesis NPCs
         }
       });
       
@@ -812,7 +933,8 @@ export class PrismaCharacterManager {
         include: {
           skills: true,
           assets: true,
-          traits: true
+          traits: true,
+          drives: true // Include drives for Nemesis NPCs
         }
       });
       
@@ -846,7 +968,8 @@ export class PrismaCharacterManager {
         include: {
           skills: true,
           assets: true,
-          traits: true
+          traits: true,
+          drives: true // Include drives for Nemesis NPCs
         }
       });
       
@@ -858,9 +981,9 @@ export class PrismaCharacterManager {
     }
   }
 
-  // Format NPC data for legacy compatibility
+  // Format NPC data for legacy compatibility with tier-specific fields
   private formatNPCForLegacyCompatibility(npc: any): any {
-    return {
+    const formattedNPC: any = {
       id: npc.id,
       name: npc.name,
       guildId: npc.guildId,
@@ -897,6 +1020,178 @@ export class PrismaCharacterManager {
         mechanical: trait.mechanical
       })) || []
     };
+
+    // Only include drives for Nemesis tier NPCs
+    if (npc.tier === 'nemesis') {
+      formattedNPC.drives = npc.drives?.map((drive: any) => ({
+        name: drive.name,
+        statement: drive.statement,
+        value: drive.value
+      })) || [];
+    }
+
+    return formattedNPC;
+  }
+
+  // ===== TIER-SPECIFIC NPC GENERATION HELPERS =====
+
+  /**
+   * Generate NPC stats based on tier following Dune: Adventures conventions
+   * Minion: Simple stats, no drives
+   * Toughened: Better stats, no drives  
+   * Nemesis: Full character sheet with drives
+   */
+  generateNPCStatsForTier(tier: 'minion' | 'toughened' | 'nemesis') {
+    const baseAttributes = {
+      muscle: 8,
+      move: 8, 
+      intellect: 8,
+      awareness: 8,
+      communication: 8,
+      discipline: 8
+    };
+
+    const baseSkills: Array<{ name: string; value: number; focus: string[] }> = [
+      { name: 'Battle', value: 6, focus: [] },
+      { name: 'Communicate', value: 6, focus: [] },
+      { name: 'Discipline', value: 6, focus: [] },
+      { name: 'Move', value: 6, focus: [] },
+      { name: 'Understand', value: 6, focus: [] }
+    ];
+
+    let attributes = { ...baseAttributes };
+    let skills: Array<{ name: string; value: number; focus: string[] }> = [...baseSkills];
+    let drives: DuneDrive[] = [];
+    let assets: DuneAsset[] = [];
+    let traits: DuneTrait[] = [];
+
+    switch (tier) {
+      case 'minion':
+        // Minions: Basic stats, simple equipment
+        attributes = {
+          muscle: 7 + Math.floor(Math.random() * 3), // 7-9
+          move: 7 + Math.floor(Math.random() * 3),
+          intellect: 7 + Math.floor(Math.random() * 3), 
+          awareness: 7 + Math.floor(Math.random() * 3),
+          communication: 7 + Math.floor(Math.random() * 3),
+          discipline: 7 + Math.floor(Math.random() * 3)
+        };
+        skills = [
+          { name: 'Battle', value: 5 + Math.floor(Math.random() * 3), focus: [] }, // 5-7
+          { name: 'Communicate', value: 5 + Math.floor(Math.random() * 3), focus: [] },
+          { name: 'Discipline', value: 5 + Math.floor(Math.random() * 3), focus: [] },
+          { name: 'Move', value: 5 + Math.floor(Math.random() * 3), focus: [] },
+          { name: 'Understand', value: 5 + Math.floor(Math.random() * 3), focus: [] }
+        ];
+        break;
+
+      case 'toughened':
+        // Toughened: Better stats, some equipment/traits
+        attributes = {
+          muscle: 8 + Math.floor(Math.random() * 3), // 8-10
+          move: 8 + Math.floor(Math.random() * 3),
+          intellect: 8 + Math.floor(Math.random() * 3),
+          awareness: 8 + Math.floor(Math.random() * 3), 
+          communication: 8 + Math.floor(Math.random() * 3),
+          discipline: 8 + Math.floor(Math.random() * 3)
+        };
+        skills = [
+          { name: 'Battle', value: 6 + Math.floor(Math.random() * 3), focus: [] }, // 6-8
+          { name: 'Communicate', value: 6 + Math.floor(Math.random() * 3), focus: [] },
+          { name: 'Discipline', value: 6 + Math.floor(Math.random() * 3), focus: [] },
+          { name: 'Move', value: 6 + Math.floor(Math.random() * 3), focus: [] },
+          { name: 'Understand', value: 6 + Math.floor(Math.random() * 3), focus: [] }
+        ];
+        assets = [
+          { name: 'Combat Training', type: 'talent', description: 'Enhanced combat capabilities' },
+          { name: 'Quality Equipment', type: 'equipment', description: 'Better than standard gear' }
+        ];
+        break;
+
+      case 'nemesis':
+        // Nemesis: Full character sheet with drives
+        attributes = {
+          muscle: 9 + Math.floor(Math.random() * 3), // 9-11
+          move: 9 + Math.floor(Math.random() * 3),
+          intellect: 9 + Math.floor(Math.random() * 3),
+          awareness: 9 + Math.floor(Math.random() * 3),
+          communication: 9 + Math.floor(Math.random() * 3),
+          discipline: 9 + Math.floor(Math.random() * 3)
+        };
+        
+        // Use proper skill point-buy values for Nemesis
+        const skillValues = [...PrismaCharacterManager.SKILL_POINT_VALUES].sort(() => Math.random() - 0.5);
+        skills = [
+          { name: 'Battle', value: skillValues[0], focus: ['Combat Tactics'] },
+          { name: 'Communicate', value: skillValues[1], focus: ['Intimidation'] },
+          { name: 'Discipline', value: skillValues[2], focus: ['Mental Fortitude'] },
+          { name: 'Move', value: skillValues[3], focus: ['Agility'] },
+          { name: 'Understand', value: skillValues[4], focus: ['Strategy'] }
+        ];
+
+        // Generate drives using proper point-buy values
+        const driveValues = [...PrismaCharacterManager.DRIVE_POINT_VALUES].sort(() => Math.random() - 0.5);
+        const driveNames = [...PrismaCharacterManager.DUNE_DRIVES].sort(() => Math.random() - 0.5);
+        drives = [
+          { name: driveNames[0], statement: `Driven by ${driveNames[0].toLowerCase()}`, value: driveValues[0] },
+          { name: driveNames[1], statement: `Seeks ${driveNames[1].toLowerCase()}`, value: driveValues[1] },
+          { name: driveNames[2], statement: `Values ${driveNames[2].toLowerCase()}`, value: driveValues[2] },
+          { name: driveNames[3], statement: `Pursues ${driveNames[3].toLowerCase()}`, value: driveValues[3] },
+          { name: driveNames[4], statement: `Embodies ${driveNames[4].toLowerCase()}`, value: driveValues[4] }
+        ];
+
+        assets = [
+          { name: 'Master Combatant', type: 'talent', description: 'Exceptional fighting skills' },
+          { name: 'Superior Equipment', type: 'equipment', description: 'Top-tier gear and weapons' },
+          { name: 'Network of Contacts', type: 'contact', description: 'Extensive connections' },
+          { name: 'Fearsome Reputation', type: 'reputation', description: 'Known and feared' }
+        ];
+        
+        traits = [
+          { name: 'Ruthless', type: 'flaw', description: 'Will do anything to achieve goals' },
+          { name: 'Strategic Mind', type: 'background', description: 'Thinks several steps ahead' }
+        ];
+        break;
+    }
+
+    return {
+      attributes,
+      skills,
+      drives, // Empty for minion/toughened, populated for nemesis
+      assets,
+      traits
+    };
+  }
+
+  /**
+   * Check if an NPC tier supports drives
+   */
+  static npcTierHasDrives(tier: 'minion' | 'toughened' | 'nemesis'): boolean {
+    return tier === 'nemesis';
+  }
+
+  /**
+   * Get tier display information
+   */
+  static getTierInfo(tier: 'minion' | 'toughened' | 'nemesis') {
+    const tierInfo = {
+      minion: {
+        displayName: 'Minion (Supporting Character)',
+        description: 'Simple stat block, no drives. Rolls use skill + attribute only.',
+        color: 0x808080 // Gray
+      },
+      toughened: {
+        displayName: 'Toughened (Notable Supporting Character)', 
+        description: 'Better stats and assets, but no drives. Rolls use skill + attribute only.',
+        color: 0xFFA500 // Orange
+      },
+      nemesis: {
+        displayName: 'Nemesis (Adversary)',
+        description: 'Full character sheet with drives. Uses all PC rules including skill + drive rolls.',
+        color: 0xFF0000 // Red
+      }
+    };
+    return tierInfo[tier];
   }
 }
 
