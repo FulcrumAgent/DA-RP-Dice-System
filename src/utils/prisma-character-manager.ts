@@ -588,23 +588,315 @@ export class PrismaCharacterManager {
     return await this.updateCharacter(characterId, { avatarUrl: undefined });
   }
 
-  // Get guild NPCs (placeholder - NPCs not yet implemented in Prisma schema)
+  // ===== NPC MANAGEMENT METHODS =====
+
+  // Get all NPCs for a guild
   async getGuildNPCs(guildId: string): Promise<any[]> {
-    // TODO: Implement NPC support in Prisma schema
-    logger.warn('NPC support not yet implemented in Prisma schema');
-    return [];
+    try {
+      const npcs = await this.prisma.npc.findMany({
+        where: { guildId },
+        include: {
+          skills: true,
+          assets: true,
+          traits: true
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+      
+      return npcs.map((npc: any) => this.formatNPCForLegacyCompatibility(npc));
+    } catch (error) {
+      logger.error('Error fetching guild NPCs:', error);
+      throw new Error('Failed to fetch guild NPCs');
+    }
   }
 
-  // Set NPC avatar (placeholder)
+  // Get NPC by name
+  async getNPCByName(name: string, guildId: string): Promise<any | null> {
+    try {
+      const npc = await this.prisma.npc.findFirst({
+        where: {
+          name: { equals: name, mode: 'insensitive' },
+          guildId
+        },
+        include: {
+          skills: true,
+          assets: true,
+          traits: true
+        }
+      });
+      
+      return npc ? this.formatNPCForLegacyCompatibility(npc) : null;
+    } catch (error) {
+      logger.error('Error fetching NPC by name:', error);
+      return null;
+    }
+  }
+
+  // Create a new NPC
+  async createNPC(
+    name: string,
+    guildId: string,
+    concepts: string[],
+    tier: 'minion' | 'toughened' | 'nemesis',
+    attributes: {
+      muscle?: number;
+      move?: number;
+      intellect?: number;
+      awareness?: number;
+      communication?: number;
+      discipline?: number;
+    },
+    skills: Array<{ name: string; value: number; focus?: string[] }>,
+    assets: Array<{ name: string; type: string; description?: string; qualities?: string[]; cost?: number }>,
+    traits: Array<{ name: string; type: string; description?: string; mechanical?: string }>,
+    createdBy: string
+  ): Promise<any> {
+    try {
+      const npc = await this.prisma.npc.create({
+        data: {
+          name,
+          guildId,
+          concepts,
+          tier,
+          createdBy,
+          attrMuscle: attributes.muscle,
+          attrMove: attributes.move,
+          attrIntellect: attributes.intellect,
+          attrAwareness: attributes.awareness,
+          attrCommunication: attributes.communication,
+          attrDiscipline: attributes.discipline,
+          skills: {
+            create: skills.map(skill => ({
+              name: skill.name,
+              value: skill.value,
+              focus: skill.focus || []
+            }))
+          },
+          assets: {
+            create: assets.map(asset => ({
+              name: asset.name,
+              type: asset.type as any,
+              description: asset.description,
+              qualities: asset.qualities || [],
+              cost: asset.cost
+            }))
+          },
+          traits: {
+            create: traits.map(trait => ({
+              name: trait.name,
+              type: trait.type as any,
+              description: trait.description,
+              mechanical: trait.mechanical
+            }))
+          }
+        },
+        include: {
+          skills: true,
+          assets: true,
+          traits: true
+        }
+      });
+      
+      logger.info(`Created NPC: ${name} in guild ${guildId}`);
+      return this.formatNPCForLegacyCompatibility(npc);
+    } catch (error) {
+      logger.error('Error creating NPC:', error);
+      throw new Error('Failed to create NPC');
+    }
+  }
+
+  // Update NPC field
+  async updateNPC(npcId: string, field: string, value: any, userId: string): Promise<any> {
+    try {
+      // First verify the NPC exists and user has permission
+      const existingNPC = await this.prisma.npc.findUnique({
+        where: { id: npcId }
+      });
+      
+      if (!existingNPC) {
+        throw new Error('NPC not found');
+      }
+      
+      if (existingNPC.createdBy !== userId) {
+        throw new Error('You can only edit NPCs you created');
+      }
+      
+      // Map field names to database columns
+      const fieldMap: { [key: string]: string } = {
+        'name': 'name',
+        'concept': 'concepts',
+        'description': 'description',
+        'tier': 'tier'
+      };
+      
+      const dbField = fieldMap[field] || field;
+      const updateData: any = {};
+      
+      if (field === 'concept') {
+        updateData.concepts = [value];
+      } else {
+        updateData[dbField] = value;
+      }
+      
+      const updatedNPC = await this.prisma.npc.update({
+        where: { id: npcId },
+        data: updateData,
+        include: {
+          skills: true,
+          assets: true,
+          traits: true
+        }
+      });
+      
+      logger.info(`Updated NPC ${npcId} field ${field}`);
+      return this.formatNPCForLegacyCompatibility(updatedNPC);
+    } catch (error) {
+      logger.error('Error updating NPC:', error);
+      throw error;
+    }
+  }
+
+  // Delete NPC
+  async deleteNPC(npcId: string, userId: string): Promise<boolean> {
+    try {
+      // First verify the NPC exists and user has permission
+      const existingNPC = await this.prisma.npc.findUnique({
+        where: { id: npcId }
+      });
+      
+      if (!existingNPC) {
+        throw new Error('NPC not found');
+      }
+      
+      if (existingNPC.createdBy !== userId) {
+        throw new Error('You can only delete NPCs you created');
+      }
+      
+      await this.prisma.npc.delete({
+        where: { id: npcId }
+      });
+      
+      logger.info(`Deleted NPC ${npcId}`);
+      return true;
+    } catch (error) {
+      logger.error('Error deleting NPC:', error);
+      throw error;
+    }
+  }
+
+  // Set NPC avatar
   async setNPCAvatar(npcId: string, avatarUrl: string, userId: string): Promise<any> {
-    // TODO: Implement NPC support in Prisma schema
-    throw new Error('NPC support not yet implemented');
+    try {
+      // Validate the image URL
+      const validation = this.validateImageUrl(avatarUrl);
+      if (!validation.valid) {
+        throw new Error(validation.error);
+      }
+      
+      // Verify the NPC exists and user has permission
+      const existingNPC = await this.prisma.npc.findUnique({
+        where: { id: npcId }
+      });
+      
+      if (!existingNPC) {
+        throw new Error('NPC not found');
+      }
+      
+      if (existingNPC.createdBy !== userId) {
+        throw new Error('You can only modify avatars for NPCs you created');
+      }
+      
+      const updatedNPC = await this.prisma.npc.update({
+        where: { id: npcId },
+        data: { avatarUrl },
+        include: {
+          skills: true,
+          assets: true,
+          traits: true
+        }
+      });
+      
+      logger.info(`Set avatar for NPC ${npcId}`);
+      return this.formatNPCForLegacyCompatibility(updatedNPC);
+    } catch (error) {
+      logger.error('Error setting NPC avatar:', error);
+      throw error;
+    }
   }
 
-  // Remove NPC avatar (placeholder)
+  // Remove NPC avatar
   async removeNPCAvatar(npcId: string, userId: string): Promise<any> {
-    // TODO: Implement NPC support in Prisma schema
-    throw new Error('NPC support not yet implemented');
+    try {
+      // Verify the NPC exists and user has permission
+      const existingNPC = await this.prisma.npc.findUnique({
+        where: { id: npcId }
+      });
+      
+      if (!existingNPC) {
+        throw new Error('NPC not found');
+      }
+      
+      if (existingNPC.createdBy !== userId) {
+        throw new Error('You can only modify avatars for NPCs you created');
+      }
+      
+      const updatedNPC = await this.prisma.npc.update({
+        where: { id: npcId },
+        data: { avatarUrl: null },
+        include: {
+          skills: true,
+          assets: true,
+          traits: true
+        }
+      });
+      
+      logger.info(`Removed avatar for NPC ${npcId}`);
+      return this.formatNPCForLegacyCompatibility(updatedNPC);
+    } catch (error) {
+      logger.error('Error removing NPC avatar:', error);
+      throw error;
+    }
+  }
+
+  // Format NPC data for legacy compatibility
+  private formatNPCForLegacyCompatibility(npc: any): any {
+    return {
+      id: npc.id,
+      name: npc.name,
+      guildId: npc.guildId,
+      concepts: npc.concepts,
+      description: npc.description,
+      tier: npc.tier,
+      avatarUrl: npc.avatarUrl,
+      createdBy: npc.createdBy,
+      createdAt: npc.createdAt,
+      attributes: {
+        muscle: npc.attrMuscle,
+        move: npc.attrMove,
+        intellect: npc.attrIntellect,
+        awareness: npc.attrAwareness,
+        communication: npc.attrCommunication,
+        discipline: npc.attrDiscipline
+      },
+      skills: npc.skills?.map((skill: any) => ({
+        name: skill.name,
+        value: skill.value,
+        focus: skill.focus
+      })) || [],
+      assets: npc.assets?.map((asset: any) => ({
+        name: asset.name,
+        type: asset.type,
+        description: asset.description,
+        qualities: asset.qualities,
+        cost: asset.cost
+      })) || [],
+      traits: npc.traits?.map((trait: any) => ({
+        name: trait.name,
+        type: trait.type,
+        description: trait.description,
+        mechanical: trait.mechanical
+      })) || []
+    };
   }
 }
 
