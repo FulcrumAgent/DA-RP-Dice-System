@@ -48,6 +48,7 @@ import * as sceneHostCommand from './commands/scene-host';
 import * as characterSheetCommand from './commands/character-sheet';
 import { handleButtonInteraction as handleCharacterSheetButton } from './commands/character-sheet-handlers';
 import { handleFinalizeButton, handleCancelButton } from './commands/character-sheet-buttons';
+import { serverSetupCommand, handleServerSetupCommand } from './commands/server-setup';
 
 import * as referenceCommand from './commands/reference';
 import * as npcManagerCommand from './commands/npc-manager';
@@ -125,7 +126,8 @@ class DuneBot {
       characterSheetCommand.data,
       referenceCommand.data,
       npcManagerCommand.data,
-      avatarCommand
+      avatarCommand,
+      serverSetupCommand
     ];
 
     allCommands.forEach((command: { name: string; [key: string]: any }) => {
@@ -177,6 +179,9 @@ class DuneBot {
           break;
         case 'avatar':
           await handleAvatarCommand(interaction as ChatInputCommandInteraction);
+          break;
+        case 'setup-server':
+          await handleServerSetupCommand(interaction);
           break;
         default:
           logger.warn(`Unknown command: ${commandName}`);
