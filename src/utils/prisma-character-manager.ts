@@ -209,7 +209,6 @@ export class PrismaCharacterManager {
       const characters = await this.prisma.character.findMany({
         where: {
           userId,
-          isActive: true,
         },
         include: {
           skills: true,
