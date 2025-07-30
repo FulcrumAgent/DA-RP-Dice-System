@@ -1010,7 +1010,6 @@ export class PrismaCharacterManager {
     const formattedNPC: any = {
       id: npc.id,
       name: npc.name,
-      guildId: npc.guildId,
       concepts: npc.concepts,
       description: npc.description,
       tier: npc.tier,
