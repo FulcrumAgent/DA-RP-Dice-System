@@ -1017,7 +1017,6 @@ export class CharacterCreator {
       logger.info('Calling prismaCharacterManager.createCharacter...');
       await prismaCharacterManager.createCharacter(
         interaction.user.id,
-        interaction.guildId!,
         character.name,
         [character.concept || ''],
         {

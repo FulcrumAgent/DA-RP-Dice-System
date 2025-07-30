@@ -27,7 +27,6 @@ export async function handleFinalizeButton(interaction: ButtonInteraction) {
     // Create the character using the Prisma character manager
     await prismaCharacterManager.createCharacter(
       member.id,
-      interaction.guild.id,
       state.data.name || 'Unnamed Character',
       state.data.concepts || [],
       {

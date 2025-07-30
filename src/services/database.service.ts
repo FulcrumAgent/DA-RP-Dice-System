@@ -48,14 +48,13 @@ export class DatabaseService {
   /**
    * Create a new character (simplified version)
    */
-  async createCharacter(userId: string, guildId: string, characterData: CharacterData): Promise<any> {
+  async createCharacter(userId: string, characterData: CharacterData): Promise<any> {
     try {
       // For now, create a basic character record
       // This can be expanded later to match your exact needs
       const character = await this.prisma.character.create({
         data: {
           userId,
-          guildId,
           name: characterData.name || 'Unnamed Character',
           concepts: characterData.concepts || [],
           house: characterData.house,
@@ -169,26 +168,12 @@ export class DatabaseService {
   }
 
   /**
-   * Create character creation session
+   * Create character creation session (DISABLED - CharacterCreationSession model removed)
    */
-  async createCharacterCreationSession(userId: string, guildId: string): Promise<any> {
-    try {
-      const session = await this.prisma.characterCreationSession.create({
-        data: {
-          userId,
-          guildId,
-          currentStep: 'NAME',
-          characterData: {},
-          tempData: {}
-        }
-      });
-      
-      logger.info(`Created character creation session ${session.id} for user ${userId}`);
-      return session;
-    } catch (error) {
-      logger.error('Failed to create character creation session:', error);
-      throw error;
-    }
+  async createCharacterCreationSession(userId: string): Promise<any> {
+    // This method is disabled as CharacterCreationSession model was removed during guild unification
+    logger.warn('createCharacterCreationSession called but CharacterCreationSession model no longer exists');
+    throw new Error('CharacterCreationSession functionality has been removed during database unification');
   }
 
   /**
