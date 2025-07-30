@@ -116,7 +116,7 @@ export async function execute(interaction: CommandInteraction) {
 async function handleCreateCharacter(interaction: ChatInputCommandInteraction, member: GuildMember) {
   try {
     // Check if user already has characters (up to 3 allowed)
-    const userCharacters = await prismaCharacterManager.getUserCharacters(member.id, interaction.guild!.id);
+    const userCharacters = await prismaCharacterManager.getUserCharacters(member.id);
     logger.info(`Character limit check for user ${member.id}: found ${userCharacters.length} characters:`, userCharacters.map((c: CharacterWithRelations) => ({ id: c.id, name: c.name, isActive: c.isActive })));
     
     if (userCharacters.length >= 3) {
@@ -148,7 +148,7 @@ async function handleViewCharacter(interaction: ChatInputCommandInteraction, mem
 
     if (characterName) {
       // Find character by name among user's characters
-      const userCharacters = await prismaCharacterManager.getUserCharacters(member.id, interaction.guild!.id);
+      const userCharacters = await prismaCharacterManager.getUserCharacters(member.id);
       const foundCharacter = userCharacters.find((char: CharacterWithRelations) => char.name.toLowerCase() === characterName.toLowerCase());
       if (foundCharacter) {
         targetCharacter = foundCharacter;
@@ -156,8 +156,8 @@ async function handleViewCharacter(interaction: ChatInputCommandInteraction, mem
       }
     } else {
       // View user's active character (or first character if no active one)
-      const userCharacters = await prismaCharacterManager.getUserCharacters(member.id, interaction.guild!.id);
-      targetCharacter = await prismaCharacterManager.getUserActiveCharacter(member.id, interaction.guild!.id) || userCharacters[0] || null;
+      const userCharacters = await prismaCharacterManager.getUserCharacters(member.id);
+      targetCharacter = await prismaCharacterManager.getUserActiveCharacter(member.id) || userCharacters[0] || null;
       isOwner = true;
     }
 
@@ -184,7 +184,7 @@ async function handleViewCharacter(interaction: ChatInputCommandInteraction, mem
 async function handleEditCharacter(interaction: ChatInputCommandInteraction, member: GuildMember) {
   try {
     const characterName = interaction.options.getString('character', true);
-    const characters = await prismaCharacterManager.getUserCharacters(member.id, interaction.guildId!);
+    const characters = await prismaCharacterManager.getUserCharacters(member.id);
     
     if (!characters || characters.length === 0) {
       await interaction.reply({
@@ -217,7 +217,7 @@ async function handleEditCharacter(interaction: ChatInputCommandInteraction, mem
 async function handleDeleteCharacter(interaction: ChatInputCommandInteraction, member: GuildMember) {
   try {
     const characterName = interaction.options.getString('character', true);
-    const userCharacters = await prismaCharacterManager.getUserCharacters(member.id, interaction.guild!.id);
+    const userCharacters = await prismaCharacterManager.getUserCharacters(member.id);
     const character = userCharacters.find((char: CharacterWithRelations) => char.name.toLowerCase() === characterName.toLowerCase());
     
     if (!character) {

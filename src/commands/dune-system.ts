@@ -136,7 +136,7 @@ export async function handleDuneRollCommand(interaction: ChatInputCommandInterac
     
     if (characterName) {
       // Try to find specified character/NPC
-      const userCharacters = await prismaCharacterManager.getUserCharacters(userId, guildId);
+      const userCharacters = await prismaCharacterManager.getUserCharacters(userId);
       character = userCharacters.find((c: any) => c.name.toLowerCase() === characterName.toLowerCase());
       
       if (!character) {
@@ -182,7 +182,7 @@ export async function handleDuneRollCommand(interaction: ChatInputCommandInterac
       }
     } else {
       // Use active character
-      character = await prismaCharacterManager.getUserActiveCharacter(userId, guildId);
+      character = await prismaCharacterManager.getUserActiveCharacter(userId);
       if (!character) {
         await interaction.reply({
           content: '❌ No active character found. Please specify a character or create one with `/sheet create`.\n\n💡 **Tip:** Use the character autocomplete to see available characters.',
@@ -646,7 +646,7 @@ export async function autocomplete(interaction: AutocompleteInteraction) {
     
     try {
       // Get user's characters
-      const userCharacters = await prismaCharacterManager.getUserCharacters(userId, guildId);
+      const userCharacters = await prismaCharacterManager.getUserCharacters(userId);
       
       // Get guild NPCs
       const guildNPCs = await prismaCharacterManager.getGuildNPCs(guildId);

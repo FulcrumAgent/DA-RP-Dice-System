@@ -315,7 +315,6 @@ async function handleCreateNPC(interaction: ChatInputCommandInteraction, member:
     // Create the NPC using Prisma
     const npc = await prismaCharacterManager.createNPC(
       name,
-      interaction.guild!.id,
       [concept],
       tier as 'minion' | 'toughened' | 'nemesis',
       baseStats.attributes,
@@ -409,7 +408,6 @@ async function handleGenerateNPC(interaction: ChatInputCommandInteraction, membe
       // Save the NPC with the suggested name
       const savedNPC = await prismaCharacterManager.createNPC(
         tempName,
-        interaction.guild!.id,
         [generatedConcept],
         tier,
         randomizedStats.attributes,
@@ -518,7 +516,7 @@ async function handleViewNPC(interaction: ChatInputCommandInteraction) {
   await interaction.deferReply();
 
   try {
-    const npc = await prismaCharacterManager.getNPCByName(npcName, interaction.guild!.id);
+    const npc = await prismaCharacterManager.getNPCByName(npcName);
 
     if (!npc) {
       await interaction.editReply({
@@ -543,7 +541,7 @@ async function handleEditNPC(interaction: ChatInputCommandInteraction, member: G
   await interaction.deferReply();
 
   try {
-    const npc = await prismaCharacterManager.getNPCByName(npcName, interaction.guild!.id);
+    const npc = await prismaCharacterManager.getNPCByName(npcName);
 
     if (!npc) {
       await interaction.editReply({
@@ -627,7 +625,7 @@ async function handleDeleteNPC(interaction: ChatInputCommandInteraction, member:
   await interaction.deferReply();
 
   try {
-    const npc = await prismaCharacterManager.getNPCByName(npcName, interaction.guild!.id);
+    const npc = await prismaCharacterManager.getNPCByName(npcName);
 
     if (!npc) {
       await interaction.editReply({
@@ -679,7 +677,7 @@ async function handleNPCRoll(interaction: ChatInputCommandInteraction) {
   await interaction.deferReply();
 
   try {
-    const npc = await prismaCharacterManager.getNPCByName(npcName, interaction.guild!.id);
+    const npc = await prismaCharacterManager.getNPCByName(npcName);
 
     if (!npc) {
       await interaction.editReply({
@@ -943,7 +941,7 @@ export async function autocomplete(interaction: any) {
         return;
       }
 
-      const npc = await prismaCharacterManager.getNPCByName(npcName, interaction.guild.id);
+      const npc = await prismaCharacterManager.getNPCByName(npcName);
       if (!npc) {
         await interaction.respond([]);
         return;

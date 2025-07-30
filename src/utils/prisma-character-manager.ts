@@ -10,7 +10,6 @@ import { logger } from './logger';
 export interface CharacterWithRelations {
   id: string;
   userId: string;
-  guildId: string;
   name: string;
   concepts: string[];
   house?: string | null;
@@ -77,7 +76,6 @@ export class PrismaCharacterManager {
    */
   async createCharacter(
     userId: string,
-    guildId: string,
     name: string,
     concepts: string[],
     options: {
@@ -97,13 +95,12 @@ export class PrismaCharacterManager {
     } = {}
   ): Promise<CharacterWithRelations> {
     try {
-      logger.info(`Creating character "${name}" for user ${userId} in guild ${guildId}`);
+      logger.info(`Creating character "${name}" for user ${userId}`);
 
       // Create character with default attributes
       const character = await this.prisma.character.create({
         data: {
           userId,
-          guildId,
           name,
           concepts,
           house: options.house,
@@ -177,14 +174,13 @@ export class PrismaCharacterManager {
   }
 
   /**
-   * Get user's active character (most recently updated)
+   * Get user's active character
    */
-  async getUserActiveCharacter(userId: string, guildId: string): Promise<CharacterWithRelations | null> {
+  async getUserActiveCharacter(userId: string): Promise<CharacterWithRelations | null> {
     try {
       const character = await this.prisma.character.findFirst({
         where: {
           userId,
-          guildId,
           isActive: true,
         },
         include: {
@@ -206,14 +202,13 @@ export class PrismaCharacterManager {
   }
 
   /**
-   * Get all characters for a user in a guild
+   * Get all characters for a user
    */
-  async getUserCharacters(userId: string, guildId: string): Promise<CharacterWithRelations[]> {
+  async getUserCharacters(userId: string): Promise<CharacterWithRelations[]> {
     try {
       const characters = await this.prisma.character.findMany({
         where: {
           userId,
-          guildId,
           isActive: true,
         },
         include: {
@@ -230,6 +225,33 @@ export class PrismaCharacterManager {
       return characters;
     } catch (error) {
       logger.error('Error getting user characters:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get all characters globally (for global access)
+   */
+  async getAllCharacters(): Promise<CharacterWithRelations[]> {
+    try {
+      const characters = await this.prisma.character.findMany({
+        where: {
+          isActive: true,
+        },
+        include: {
+          skills: true,
+          drives: true,
+          assets: true,
+          traits: true,
+        },
+        orderBy: {
+          lastUpdated: 'desc',
+        },
+      });
+
+      return characters;
+    } catch (error) {
+      logger.error('Error getting all characters:', error);
       return [];
     }
   }
@@ -590,11 +612,10 @@ export class PrismaCharacterManager {
 
   // ===== NPC MANAGEMENT METHODS =====
 
-  // Get all NPCs for a guild
-  async getGuildNPCs(guildId: string): Promise<any[]> {
+  // Get all NPCs (global access)
+  async getAllNPCs(): Promise<any[]> {
     try {
       const npcs = await this.prisma.npc.findMany({
-        where: { guildId },
         include: {
           skills: true,
           assets: true,
@@ -606,18 +627,23 @@ export class PrismaCharacterManager {
       
       return npcs.map((npc: any) => this.formatNPCForLegacyCompatibility(npc));
     } catch (error) {
-      logger.error('Error fetching guild NPCs:', error);
-      throw new Error('Failed to fetch guild NPCs');
+      logger.error('Error fetching NPCs:', error);
+      throw new Error('Failed to fetch NPCs');
     }
   }
 
-  // Get NPC by name
-  async getNPCByName(name: string, guildId: string): Promise<any | null> {
+  // Backward compatibility method - now returns all NPCs globally
+  async getGuildNPCs(guildId?: string): Promise<any[]> {
+    // Ignore guildId parameter and return all NPCs globally
+    return this.getAllNPCs();
+  }
+
+  // Get NPC by name (global access)
+  async getNPCByName(name: string): Promise<any | null> {
     try {
       const npc = await this.prisma.npc.findFirst({
         where: {
-          name: { equals: name, mode: 'insensitive' },
-          guildId
+          name: { equals: name, mode: 'insensitive' }
         },
         include: {
           skills: true,
@@ -634,10 +660,9 @@ export class PrismaCharacterManager {
     }
   }
 
-  // Create a new NPC with tier-specific fields
+  // Create a new NPC with tier-specific fields (global access)
   async createNPC(
     name: string,
-    guildId: string,
     concepts: string[],
     tier: 'minion' | 'toughened' | 'nemesis',
     attributes: {
@@ -666,7 +691,6 @@ export class PrismaCharacterManager {
 
       const npcData: any = {
         name,
-        guildId,
         concepts,
         tier,
         createdBy,
@@ -724,7 +748,7 @@ export class PrismaCharacterManager {
         }
       });
       
-      logger.info(`Created NPC: ${name} in guild ${guildId}`);
+      logger.info(`Created NPC: ${name}`);
       return this.formatNPCForLegacyCompatibility(npc);
     } catch (error) {
       logger.error('Error creating NPC:', error);

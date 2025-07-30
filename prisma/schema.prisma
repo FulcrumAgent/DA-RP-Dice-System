@@ -14,7 +14,6 @@ datasource db {
 model Character {
   id       String @id @default(uuid())
   userId   String @map("user_id") // Discord user ID
-  guildId  String @map("guild_id") // Discord guild ID
   name     String
   concepts String[] @default([])
   house    String?
@@ -49,8 +48,8 @@ model Character {
   assets CharacterAsset[]
   traits CharacterTrait[]
   
-  @@unique([userId, guildId, name])
-  @@index([userId, guildId])
+  @@unique([userId, name])
+  @@index([userId])
   @@index([isActive])
   @@index([lastUpdated])
   @@map("characters")
@@ -122,7 +121,6 @@ model CharacterTrait {
 model Npc {
   id          String   @id @default(uuid())
   name        String
-  guildId     String   @map("guild_id")
   concepts    String[] @default([])
   description String?
   tier        NpcTier?
@@ -146,7 +144,6 @@ model Npc {
   traits NpcTrait[]
   drives NpcDrive[]
   
-  @@index([guildId])
   @@index([createdBy])
   @@index([tier])
   @@map("npcs")

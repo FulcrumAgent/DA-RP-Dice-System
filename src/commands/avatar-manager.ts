@@ -94,7 +94,7 @@ async function handleSetAvatar(interaction: ChatInputCommandInteraction): Promis
     }
 
     // Find character or NPC
-    const userCharacters = await prismaCharacterManager.getUserCharacters(userId, guildId);
+    const userCharacters = await prismaCharacterManager.getUserCharacters(userId);
     const character = userCharacters.find(c => c.name.toLowerCase() === characterName.toLowerCase());
     
     if (character) {
@@ -162,7 +162,7 @@ async function handleRemoveAvatar(interaction: ChatInputCommandInteraction): Pro
 
   try {
     // Find character or NPC
-    const userCharacters = await prismaCharacterManager.getUserCharacters(userId, guildId);
+    const userCharacters = await prismaCharacterManager.getUserCharacters(userId);
     const character = userCharacters.find(c => c.name.toLowerCase() === characterName.toLowerCase());
     
     if (character) {
@@ -228,8 +228,8 @@ async function handleViewAvatar(interaction: ChatInputCommandInteraction): Promi
 
   try {
     // Find character or NPC (can view any character/NPC, not just owned ones)
-    const guildCharacters = await prismaCharacterManager.getUserCharacters('', guildId); // Get all guild characters
-    const character = guildCharacters.find((c: any) => c.name.toLowerCase() === characterName.toLowerCase());
+    const allCharacters = await prismaCharacterManager.getAllCharacters(); // Get all characters globally
+    const character = allCharacters.find((c: any) => c.name.toLowerCase() === characterName.toLowerCase());
     
     if (character) {
       const avatarUrl = character.avatarUrl || interaction.user.displayAvatarURL();
@@ -313,7 +313,7 @@ export async function handleAvatarAutocomplete(interaction: AutocompleteInteract
     const choices: { name: string; value: string }[] = [];
 
     // Get user's characters
-    const userCharacters = await prismaCharacterManager.getUserCharacters(userId, guildId);
+    const userCharacters = await prismaCharacterManager.getUserCharacters(userId);
     for (const character of userCharacters) {
       if (character.name.toLowerCase().includes(focusedValue)) {
         choices.push({
@@ -338,8 +338,8 @@ export async function handleAvatarAutocomplete(interaction: AutocompleteInteract
     // For view command, also include other characters/NPCs in the guild
     const subcommand = interaction.options.getSubcommand();
     if (subcommand === 'view') {
-      const guildCharacters = await prismaCharacterManager.getUserCharacters('', guildId);
-      for (const character of guildCharacters) {
+      const allCharacters = await prismaCharacterManager.getAllCharacters(); // Get all characters globally
+      for (const character of allCharacters) {
         if (character.userId !== userId && character.name.toLowerCase().includes(focusedValue)) {
           choices.push({
             name: `${character.name} (Other's Character)`,
