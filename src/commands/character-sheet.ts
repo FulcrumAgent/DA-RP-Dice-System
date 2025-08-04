@@ -748,8 +748,10 @@ export async function handleEditingModal(interaction: ModalSubmitInteraction): P
 function createCharacterViewEmbed(character: CharacterWithRelations, isOwner: boolean, user?: any): EmbedBuilder {
   const embed = new EmbedBuilder()
     .setColor(0xD4AF37)
-    .setTitle(`📜 ${character.name}`)
-    .setDescription(character.concepts.join(', ') || 'No concept set');
+    .setTitle(`📜 ${character.name || 'Unknown Character'}`)
+    .setDescription((character.concepts && Array.isArray(character.concepts) && character.concepts.length > 0) 
+      ? character.concepts.join(', ') 
+      : 'No concept set');
 
   // Add character avatar if user is provided
   if (user) {
@@ -759,12 +761,14 @@ function createCharacterViewEmbed(character: CharacterWithRelations, isOwner: bo
 
   // Helper function to get skill value by name
   const getSkillValue = (skillName: string): number => {
+    if (!character.skills || !Array.isArray(character.skills)) return 0;
     const skill = character.skills.find((s: any) => s.name.toLowerCase() === skillName.toLowerCase());
     return skill?.value || 0;
   };
 
   // Helper function to get drive value by name
   const getDriveValue = (driveName: string): number => {
+    if (!character.drives || !Array.isArray(character.drives)) return 0;
     const drive = character.drives.find((d: any) => d.name.toLowerCase() === driveName.toLowerCase());
     return drive?.value || 0;
   };
@@ -786,32 +790,46 @@ function createCharacterViewEmbed(character: CharacterWithRelations, isOwner: bo
   // Show additional details only to owner
   if (isOwner) {
     // Show skill focuses
-    const focusText = character.skills
-      .filter((skill: any) => skill.focus && skill.focus.length > 0)
-      .map((skill: any) => `**${skill.name}:** ${skill.focus!.join(', ')}`)
-      .join('\n');
+    const focusText = (character.skills && Array.isArray(character.skills)) 
+      ? character.skills
+          .filter((skill: any) => skill.focus && Array.isArray(skill.focus) && skill.focus.length > 0)
+          .map((skill: any) => `**${skill.name}:** ${skill.focus!.join(', ')}`)
+          .join('\n')
+      : '';
     
     if (focusText) {
       embed.addFields({ name: '🎯 Focuses', value: focusText, inline: false });
     }
 
     // Show assets
-    if (character.assets && character.assets.length > 0) {
-      const assetText = character.assets.map((asset: any) => `**${asset.name}** (${asset.type})`).join('\n');
-      embed.addFields({ name: '🎒 Assets', value: assetText, inline: false });
+    if (character.assets && Array.isArray(character.assets) && character.assets.length > 0) {
+      const assetText = character.assets
+        .filter((asset: any) => asset && asset.name)
+        .map((asset: any) => `**${asset.name}** (${asset.type || 'Unknown'})`)
+        .join('\n');
+      if (assetText) {
+        embed.addFields({ name: '🎒 Assets', value: assetText, inline: false });
+      }
     }
 
     // Show traits
-    if (character.traits && character.traits.length > 0) {
-      const traitText = character.traits.map((trait: any) => `**${trait.name}** (${trait.type})`).join('\n');
-      embed.addFields({ name: '✨ Traits', value: traitText, inline: false });
+    if (character.traits && Array.isArray(character.traits) && character.traits.length > 0) {
+      const traitText = character.traits
+        .filter((trait: any) => trait && trait.name)
+        .map((trait: any) => `**${trait.name}** (${trait.type || 'Unknown'})`)
+        .join('\n');
+      if (traitText) {
+        embed.addFields({ name: '✨ Traits', value: traitText, inline: false });
+      }
     }
 
     // Show drive statements
-    const statementText = character.drives
-      .filter((drive: any) => drive.statement && drive.statement.trim().length > 0)
-      .map((drive: any) => `**${drive.name}:** "${drive.statement}"`)
-      .join('\n');
+    const statementText = (character.drives && Array.isArray(character.drives))
+      ? character.drives
+          .filter((drive: any) => drive && drive.statement && drive.statement.trim().length > 0)
+          .map((drive: any) => `**${drive.name}:** "${drive.statement}"`)
+          .join('\n')
+      : '';
     
     if (statementText) {
       embed.addFields({ name: '📝 Drive Statements', value: statementText, inline: false });
