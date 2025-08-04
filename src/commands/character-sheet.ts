@@ -774,18 +774,21 @@ function createCharacterViewEmbed(character: CharacterWithRelations, isOwner: bo
   };
 
   // Always show basic info (name, concept, drive scores, skill scores)
-  embed.addFields(
-    { 
-      name: '🎯 Drive Scores', 
-      value: `**Duty:** ${getDriveValue('Duty')}\n**Faith:** ${getDriveValue('Faith')}\n**Justice:** ${getDriveValue('Justice')}\n**Power:** ${getDriveValue('Power')}\n**Truth:** ${getDriveValue('Truth')}`, 
-      inline: true 
-    },
-    { 
-      name: '⚔️ Skill Scores', 
-      value: `**Battle:** ${getSkillValue('Battle')}\n**Communicate:** ${getSkillValue('Communicate')}\n**Discipline:** ${getSkillValue('Discipline')}\n**Move:** ${getSkillValue('Move')}\n**Understand:** ${getSkillValue('Understand')}`, 
-      inline: true 
-    }
-  );
+  const driveScores = `**Duty:** ${getDriveValue('Duty')}\n**Faith:** ${getDriveValue('Faith')}\n**Justice:** ${getDriveValue('Justice')}\n**Power:** ${getDriveValue('Power')}\n**Truth:** ${getDriveValue('Truth')}`;
+  const skillScores = `**Battle:** ${getSkillValue('Battle')}\n**Communicate:** ${getSkillValue('Communicate')}\n**Discipline:** ${getSkillValue('Discipline')}\n**Move:** ${getSkillValue('Move')}\n**Understand:** ${getSkillValue('Understand')}`;
+  
+  // Validate field values are not empty
+  const fields = [];
+  if (driveScores && driveScores.trim().length > 0) {
+    fields.push({ name: '🎯 Drive Scores', value: driveScores, inline: true });
+  }
+  if (skillScores && skillScores.trim().length > 0) {
+    fields.push({ name: '⚔️ Skill Scores', value: skillScores, inline: true });
+  }
+  
+  if (fields.length > 0) {
+    embed.addFields(fields);
+  }
 
   // Show additional details only to owner
   if (isOwner) {
@@ -797,8 +800,8 @@ function createCharacterViewEmbed(character: CharacterWithRelations, isOwner: bo
           .join('\n')
       : '';
     
-    if (focusText) {
-      embed.addFields({ name: '🎯 Focuses', value: focusText, inline: false });
+    if (focusText && focusText.trim().length > 0) {
+      embed.addFields([{ name: '🎯 Focuses', value: focusText, inline: false }]);
     }
 
     // Show assets
@@ -807,8 +810,8 @@ function createCharacterViewEmbed(character: CharacterWithRelations, isOwner: bo
         .filter((asset: any) => asset && asset.name)
         .map((asset: any) => `**${asset.name}** (${asset.type || 'Unknown'})`)
         .join('\n');
-      if (assetText) {
-        embed.addFields({ name: '🎒 Assets', value: assetText, inline: false });
+      if (assetText && assetText.trim().length > 0) {
+        embed.addFields([{ name: '🎒 Assets', value: assetText, inline: false }]);
       }
     }
 
@@ -818,8 +821,8 @@ function createCharacterViewEmbed(character: CharacterWithRelations, isOwner: bo
         .filter((trait: any) => trait && trait.name)
         .map((trait: any) => `**${trait.name}** (${trait.type || 'Unknown'})`)
         .join('\n');
-      if (traitText) {
-        embed.addFields({ name: '✨ Traits', value: traitText, inline: false });
+      if (traitText && traitText.trim().length > 0) {
+        embed.addFields([{ name: '✨ Traits', value: traitText, inline: false }]);
       }
     }
 
@@ -831,8 +834,8 @@ function createCharacterViewEmbed(character: CharacterWithRelations, isOwner: bo
           .join('\n')
       : '';
     
-    if (statementText) {
-      embed.addFields({ name: '📝 Drive Statements', value: statementText, inline: false });
+    if (statementText && statementText.trim().length > 0) {
+      embed.addFields([{ name: '📝 Drive Statements', value: statementText, inline: false }]);
     }
   } else {
     embed.setFooter({ text: 'Limited view - only owner can see full details' });
