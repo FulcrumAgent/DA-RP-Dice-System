@@ -17,7 +17,6 @@ export enum CreationStep {
 
 export interface CharacterCreationSession {
   userId: string;
-  guildId: string;
   characterData: CharacterData;
   currentStep: CreationStep;
   lastUpdated: number;

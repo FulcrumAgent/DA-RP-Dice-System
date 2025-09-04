@@ -55,7 +55,6 @@ export interface CanonicalCharacter {
 
 export interface CharacterCreationSession {
   userId: string;
-  guildId: string;
   messageId?: string;
   currentStep: number;
   character: Partial<CanonicalCharacter>;

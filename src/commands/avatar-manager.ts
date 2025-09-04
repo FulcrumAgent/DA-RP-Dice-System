@@ -80,7 +80,6 @@ async function handleSetAvatar(interaction: ChatInputCommandInteraction): Promis
   const characterName = interaction.options.getString('character', true);
   const avatarUrl = interaction.options.getString('url', true);
   const userId = interaction.user.id;
-  const guildId = interaction.guildId!;
 
   try {
     // Validate the image URL
@@ -118,8 +117,8 @@ async function handleSetAvatar(interaction: ChatInputCommandInteraction): Promis
     }
 
     // Check NPCs
-    const guildNPCs = await prismaCharacterManager.getGuildNPCs(guildId);
-    const npc = guildNPCs.find((n: any) => n.name.toLowerCase() === characterName.toLowerCase() && n.createdBy === userId);
+    const allNPCs = await prismaCharacterManager.getAllNPCs();
+    const npc = allNPCs.find((n: any) => n.name.toLowerCase() === characterName.toLowerCase() && n.createdBy === userId);
     
     if (npc) {
       // Set NPC avatar
@@ -158,7 +157,6 @@ async function handleSetAvatar(interaction: ChatInputCommandInteraction): Promis
 async function handleRemoveAvatar(interaction: ChatInputCommandInteraction): Promise<void> {
   const characterName = interaction.options.getString('character', true);
   const userId = interaction.user.id;
-  const guildId = interaction.guildId!;
 
   try {
     // Find character or NPC
@@ -185,8 +183,8 @@ async function handleRemoveAvatar(interaction: ChatInputCommandInteraction): Pro
     }
 
     // Check NPCs
-    const guildNPCs = await prismaCharacterManager.getGuildNPCs(guildId);
-    const npc = guildNPCs.find((n: any) => n.name.toLowerCase() === characterName.toLowerCase() && n.createdBy === userId);
+    const allNPCs = await prismaCharacterManager.getAllNPCs();
+    const npc = allNPCs.find((n: any) => n.name.toLowerCase() === characterName.toLowerCase() && n.createdBy === userId);
     
     if (npc) {
       // Remove NPC avatar
@@ -224,7 +222,6 @@ async function handleRemoveAvatar(interaction: ChatInputCommandInteraction): Pro
 async function handleViewAvatar(interaction: ChatInputCommandInteraction): Promise<void> {
   const characterName = interaction.options.getString('character', true);
   const userId = interaction.user.id;
-  const guildId = interaction.guildId!;
 
   try {
     // Find character or NPC (can view any character/NPC, not just owned ones)
@@ -258,8 +255,8 @@ async function handleViewAvatar(interaction: ChatInputCommandInteraction): Promi
     }
 
     // Check NPCs
-    const guildNPCs = await prismaCharacterManager.getGuildNPCs(guildId);
-    const npc = guildNPCs.find((n: any) => n.name.toLowerCase() === characterName.toLowerCase());
+    const allNPCs = await prismaCharacterManager.getAllNPCs();
+    const npc = allNPCs.find((n: any) => n.name.toLowerCase() === characterName.toLowerCase());
     
     if (npc) {
       // Get the creator's avatar for fallback
@@ -307,7 +304,6 @@ async function handleViewAvatar(interaction: ChatInputCommandInteraction): Promi
 export async function handleAvatarAutocomplete(interaction: AutocompleteInteraction): Promise<void> {
   const focusedValue = interaction.options.getFocused().toLowerCase();
   const userId = interaction.user.id;
-  const guildId = interaction.guildId!;
 
   try {
     const choices: { name: string; value: string }[] = [];
@@ -324,8 +320,8 @@ export async function handleAvatarAutocomplete(interaction: AutocompleteInteract
     }
 
     // Get user's NPCs
-    const guildNPCs = await prismaCharacterManager.getGuildNPCs(guildId);
-    const userNPCs = guildNPCs.filter((npc: any) => npc.createdBy === userId);
+    const allNPCs = await prismaCharacterManager.getAllNPCs();
+    const userNPCs = allNPCs.filter((npc: any) => npc.createdBy === userId);
     for (const npc of userNPCs) {
       if (npc.name.toLowerCase().includes(focusedValue)) {
         choices.push({
@@ -348,7 +344,7 @@ export async function handleAvatarAutocomplete(interaction: AutocompleteInteract
         }
       }
 
-      for (const npc of guildNPCs) {
+      for (const npc of allNPCs) {
         if (npc.createdBy !== userId && npc.name.toLowerCase().includes(focusedValue)) {
           choices.push({
             name: `${npc.name} (Other's NPC)`,

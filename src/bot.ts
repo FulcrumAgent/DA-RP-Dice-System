@@ -48,14 +48,23 @@ import * as duneReferenceCommand from './commands/dune-reference';
 
 import * as sceneHostCommand from './commands/scene-host';
 import * as characterSheetCommand from './commands/character-sheet';
-import { handleButtonInteraction as handleCharacterSheetButton } from './commands/character-sheet-handlers';
-import { handleFinalizeButton, handleCancelButton } from './commands/character-sheet-buttons';
 import { serverSetupCommand, handleServerSetupCommand } from './commands/server-setup';
 
 import * as referenceCommand from './commands/reference';
 import * as npcManagerCommand from './commands/npc-manager';
 // NPC handler functions removed - NPC system temporarily disabled
 import { avatarCommand, handleAvatarCommand, handleAvatarAutocomplete } from './commands/avatar-manager';
+
+// Module system imports
+import { command as moduleBrowserCommand } from './commands/module-browser';
+import { command as sceneNavigatorCommand } from './commands/scene-navigator';
+import { command as moduleNpcsCommand } from './commands/module-npcs';
+import { command as moduleHandoutsCommand } from './commands/module-handouts';
+import { handleModuleInteractions } from './handlers/module-interactions';
+
+// Tarot and card game imports
+import { duneTarotCommand, execute as executeTarot, autocomplete as autocompleteTarot } from './commands/dune-tarot';
+import { sysselraadCommand, execute as executeSysselraad, autocomplete as autocompleteSysselraad } from './commands/sysselraad';
 
 
 class DuneBot {
@@ -129,7 +138,15 @@ class DuneBot {
       referenceCommand.data,
       npcManagerCommand.data,
       avatarCommand,
-      serverSetupCommand
+      serverSetupCommand,
+      // Module system commands
+      moduleBrowserCommand.data,
+      sceneNavigatorCommand.data,
+      moduleNpcsCommand.data,
+      moduleHandoutsCommand.data,
+      // Tarot and card game commands
+      duneTarotCommand,
+      sysselraadCommand
     ];
 
     allCommands.forEach((command: { name: string; [key: string]: any }) => {
@@ -185,6 +202,24 @@ class DuneBot {
         case 'setup-server':
           await handleServerSetupCommand(interaction);
           break;
+        case 'modules':
+          await moduleBrowserCommand.execute(interaction as ChatInputCommandInteraction);
+          break;
+        case 'scene':
+          await sceneNavigatorCommand.execute(interaction as ChatInputCommandInteraction);
+          break;
+        case 'module-npc':
+          await moduleNpcsCommand.execute(interaction as ChatInputCommandInteraction);
+          break;
+        case 'handout':
+          await moduleHandoutsCommand.execute(interaction as ChatInputCommandInteraction);
+          break;
+        case 'tarot':
+          await executeTarot(interaction as ChatInputCommandInteraction);
+          break;
+        case 'sysselraad':
+          await executeSysselraad(interaction as ChatInputCommandInteraction);
+          break;
         default:
           logger.warn(`Unknown command: ${commandName}`);
           await interaction.reply({
@@ -237,6 +272,32 @@ class DuneBot {
           break;
         case 'avatar':
           await handleAvatarAutocomplete(interaction);
+          break;
+        case 'modules':
+          if (moduleBrowserCommand.autocomplete) {
+            await moduleBrowserCommand.autocomplete(interaction);
+          }
+          break;
+        case 'scene':
+          if (sceneNavigatorCommand.autocomplete) {
+            await sceneNavigatorCommand.autocomplete(interaction);
+          }
+          break;
+        case 'module-npc':
+          if (moduleNpcsCommand.autocomplete) {
+            await moduleNpcsCommand.autocomplete(interaction);
+          }
+          break;
+        case 'handout':
+          if (moduleHandoutsCommand.autocomplete) {
+            await moduleHandoutsCommand.autocomplete(interaction);
+          }
+          break;
+        case 'tarot':
+          await autocompleteTarot(interaction);
+          break;
+        case 'sysselraad':
+          await autocompleteSysselraad(interaction);
           break;
         default:
           await interaction.respond([]);
@@ -300,6 +361,15 @@ class DuneBot {
       if (interaction.customId.startsWith('character_creation_') || interaction.customId.startsWith('canon_')) {
         const { CharacterCreator } = await import('./commands/character-creator.js');
         await CharacterCreator.handleSelectMenu(interaction);
+        return;
+      }
+      
+      // Module system select menus
+      if (interaction.customId === 'module_select' ||
+          interaction.customId === 'npc_select' ||
+          interaction.customId === 'handout_select' ||
+          interaction.customId === 'scene_handout_distribute') {
+        await handleModuleInteractions(interaction);
         return;
       }
       
@@ -419,27 +489,20 @@ class DuneBot {
         // Focus system buttons
         case 'focus_back':
         case 'focus_continue': {
-          const memberFocus = interaction.member as GuildMember;
-          if (memberFocus) {
-            await handleCharacterSheetButton(interaction);
-          }
+          await interaction.reply({
+            content: '❌ Focus navigation is handled through the modern character-creator system. Use `/character create` to start character creation.',
+            ephemeral: true
+          });
           break;
         }
 
-        // Finalize and cancel buttons
-        case 'finalize_character': {
-          const memberFinalize = interaction.member as GuildMember;
-          if (memberFinalize) {
-            await handleFinalizeButton(interaction);
-          }
-          break;
-        }
-
+        // Finalize and cancel buttons - deprecated, redirect to modern system
+        case 'finalize_character':
         case 'cancel_character': {
-          const memberCancel = interaction.member as GuildMember;
-          if (memberCancel) {
-            await handleCancelButton(interaction);
-          }
+          await interaction.reply({
+            content: '❌ Character finalization is handled through the modern character-creator system. Use `/character create` to start character creation.',
+            ephemeral: true
+          });
           break;
         }
 
@@ -478,12 +541,42 @@ class DuneBot {
         }
 
         default:
+          // Handle tarot card buttons
+          if (interaction.customId.startsWith('tarot_draw_again_') || interaction.customId === 'tarot_interpretation') {
+            try {
+              const { handleTarotButton } = await import('./commands/dune-tarot.js');
+              await handleTarotButton(interaction);
+            } catch (error) {
+              logger.error('Error handling tarot button:', error);
+              await interaction.reply({
+                content: '❌ Error handling tarot interaction. Please try again.',
+                ephemeral: true
+              });
+            }
+            break;
+          }
+
+          // Handle sysselraad game buttons  
+          if (interaction.customId.startsWith('sysselraad_')) {
+            try {
+              const { handleSysselraadButton } = await import('./commands/sysselraad.js');
+              await handleSysselraadButton(interaction);
+            } catch (error) {
+              logger.error('Error handling sysselraad button:', error);
+              await interaction.reply({
+                content: '❌ Error handling sysselraad interaction. Please try again.',
+                ephemeral: true
+              });
+            }
+            break;
+          }
+
           // Handle dynamic focus remove buttons
           if (interaction.customId.startsWith('focus_remove_')) {
-            const memberFocusRemove = interaction.member as GuildMember;
-            if (memberFocusRemove) {
-              await handleCharacterSheetButton(interaction);
-            }
+            await interaction.reply({
+              content: '❌ Focus management is handled through the modern character-sheet system. Use `/character sheet` to manage your character.',
+              ephemeral: true
+            });
             break;
           }
           
@@ -517,6 +610,19 @@ class DuneBot {
           // Confirm Spend Momentum button
           if (interaction.customId.startsWith('confirm_spend_momentum_')) {
             await this.handleConfirmSpendMomentumButton(interaction);
+            break;
+          }
+          
+          // Module system interactions
+          if (interaction.customId.startsWith('load_module:') ||
+              interaction.customId.startsWith('view_scenes:') ||
+              interaction.customId.startsWith('view_npcs:') ||
+              interaction.customId === 'scene_next' ||
+              interaction.customId === 'scene_previous' ||
+              interaction.customId.startsWith('scene_npcs:') ||
+              interaction.customId.startsWith('scene_handouts:') ||
+              interaction.customId === 'scene_current') {
+            await handleModuleInteractions(interaction);
             break;
           }
           
@@ -1204,7 +1310,7 @@ class DuneBot {
       
       // Update momentum pool
       const database = new DataManager();
-      const updatedPool = await database.updateMomentum(guildId, channelId, momentumAmount);
+      const updatedPool = await database.updateMomentum(channelId, momentumAmount);
       
       await interaction.reply({
         content: `✨ **Generated ${momentumAmount} Momentum!**\n\n🎯 **Current Pool:** ${updatedPool.momentum} Momentum | ${updatedPool.threat} Threat`,
@@ -1234,7 +1340,7 @@ class DuneBot {
       
       // Get current momentum pool
       const database = new DataManager();
-      const currentPool = await database.getMomentumPool(guildId, channelId);
+      const currentPool = await database.getMomentumPool(channelId);
       
       if (currentPool.momentum <= 0) {
         await interaction.reply({
@@ -1292,7 +1398,7 @@ class DuneBot {
       
       // Update threat pool
       const database = new DataManager();
-      const updatedPool = await database.updateMomentum(guildId, channelId, 0, threatAmount);
+      const updatedPool = await database.updateMomentum(channelId, 0, threatAmount);
       
       await interaction.reply({
         content: `⚠️ **Added ${threatAmount} Threat!**\n\n🎯 **Current Pool:** ${updatedPool.momentum} Momentum | ${updatedPool.threat} Threat`,
@@ -1334,7 +1440,7 @@ class DuneBot {
 
       // Update momentum pool by spending the amount
       const database = new DataManager();
-      const currentPool = await database.getMomentumPool(guildId, channelId);
+      const currentPool = await database.getMomentumPool(channelId);
       
       if (currentPool.momentum < spendAmount) {
         await interaction.reply({
@@ -1344,7 +1450,7 @@ class DuneBot {
         return;
       }
 
-      const updatedPool = await database.updateMomentum(guildId, channelId, -spendAmount);
+      const updatedPool = await database.updateMomentum(channelId, -spendAmount);
 
       await interaction.reply({
         content: `✅ **Spent ${spendAmount} Momentum!**\n\n🎯 **Current Pool:** ${updatedPool.momentum} Momentum | ${updatedPool.threat} Threat`,

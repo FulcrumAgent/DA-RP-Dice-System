@@ -267,7 +267,6 @@ interface EditingSession {
   characterId: string;
   character: CharacterWithRelations;
   userId: string;
-  guildId: string;
   originalInteraction?: ChatInputCommandInteraction;
 }
 
@@ -277,14 +276,13 @@ const editingSessions = new Map<string, EditingSession>();
  * Start character editing session
  */
 async function startCharacterEditing(interaction: ChatInputCommandInteraction, character: CharacterWithRelations) {
-  const sessionId = `${interaction.user.id}_${interaction.guildId}`;
+  const sessionId = interaction.user.id;
   
   // Store the editing session
   editingSessions.set(sessionId, {
     characterId: character.id,
     character: { ...character }, // Create a copy for editing
     userId: interaction.user.id,
-    guildId: interaction.guildId!,
     originalInteraction: interaction
   });
   
@@ -403,7 +401,7 @@ function formatSkills(character: CharacterWithRelations): string {
  * Handle character editing button interactions
  */
 export async function handleEditingButton(interaction: ButtonInteraction): Promise<void> {
-  const sessionId = `${interaction.user.id}_${interaction.guildId}`;
+  const sessionId = interaction.user.id;
   const session = editingSessions.get(sessionId);
   
   if (!session) {
@@ -609,7 +607,7 @@ export async function handleEditingButton(interaction: ButtonInteraction): Promi
  * Handle character editing modal submissions
  */
 export async function handleEditingModal(interaction: ModalSubmitInteraction): Promise<void> {
-  const sessionId = `${interaction.user.id}_${interaction.guildId}`;
+  const sessionId = interaction.user.id;
   const session = editingSessions.get(sessionId);
   
   if (!session) {

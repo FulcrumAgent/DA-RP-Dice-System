@@ -63,22 +63,19 @@ export class CharacterCreator {
   static async startCreation(interaction: CommandInteraction, member: GuildMember): Promise<void> {
     try {
       const userId = member.id;
-      const guildId = interaction.guild!.id;
       
       // Clear any existing session to ensure fresh start
       if (creationSessions.has(userId)) {
-        logger.info(`Clearing existing character creation session for user ${userId}`);
         creationSessions.delete(userId);
+        logger.info(`Cleared existing creation session for user ${userId}`);
       }
-      
+
       // Create new character creation session
       const newSession: CharacterCreationSession = {
         userId,
-        guildId,
         currentStep: 0,
         character: {
           userId,
-          guildId,
           archetypes: [],
           drives: {
             duty: { value: 0, statement: '' },
@@ -1453,8 +1450,7 @@ export class CharacterCreator {
   static async handleButton(interaction: ButtonInteraction): Promise<void> {
     logger.info('CharacterCreator.handleButton called with:', {
       customId: interaction.customId,
-      userId: interaction.user.id,
-      guildId: interaction.guildId
+      userId: interaction.user.id
     });
     
     const session = creationSessions.get(interaction.user.id);

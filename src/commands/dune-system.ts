@@ -127,91 +127,55 @@ export async function handleDuneRollCommand(interaction: ChatInputCommandInterac
     const description = options.getString('description');
     const isPrivate = options.getBoolean('private') || false;
 
-    const guildId = interaction.guildId!;
     const userId = interaction.user.id;
 
     // Get character data
-    let character;
-    let isNPC = false;
+    const character = await prismaCharacterManager.getUserActiveCharacter(userId);
     
+    let actingCharacter: any = null;
     if (characterName) {
-      // Try to find specified character/NPC
+      // Look for specific character by name
       const userCharacters = await prismaCharacterManager.getUserCharacters(userId);
-      character = userCharacters.find((c: any) => c.name.toLowerCase() === characterName.toLowerCase());
+      actingCharacter = userCharacters.find((c: any) => c.name.toLowerCase() === characterName.toLowerCase());
       
-      if (!character) {
+      if (!actingCharacter) {
         // Try to find NPC
-        const guildNPCs = await prismaCharacterManager.getGuildNPCs(guildId);
-        const npc = guildNPCs.find((n: any) => n.name.toLowerCase() === characterName.toLowerCase());
+        const allNPCs = await prismaCharacterManager.getAllNPCs();
+        const npc = allNPCs.find((n: any) => n.name.toLowerCase() === characterName.toLowerCase());
         if (npc) {
-          // Check NPC access permissions: only creator or scene host can use NPCs
-          const isCreator = npc.createdBy === userId;
-          let isSceneHost = false;
+          // Check NPC access permissions: only creator can use NPCs
+          const canUseNPC = npc.createdBy === userId;
           
-          // Check if user is currently hosting a scene in this channel
-          try {
-            const activeScenes = sceneManager.getActiveScenes(guildId);
-            const channelScene = activeScenes.find(scene => 
-              scene.channelId === interaction.channelId && scene.hostId === userId
-            );
-            isSceneHost = !!channelScene;
-          } catch (error) {
-            // No active scene or error checking - not a scene host
-            isSceneHost = false;
-          }
-          
-          if (!isCreator && !isSceneHost) {
+          // For now, only the creator can use their NPCs
+          // Future enhancement: Add scene host permissions
+          if (!canUseNPC) {
             await interaction.reply({
-              content: `❌ You don't have permission to roll for NPC "${characterName}".\n\n🔒 **NPC Access Rules:**\n• Only the **NPC creator** can roll for their NPCs\n• **Scene Hosts** can roll for any NPC in their active scene\n\n💡 **Tip:** Use \`/scene host\` to start hosting a scene, or ask the NPC creator to make the roll.`,
+              content: '❌ You can only roll for NPCs you created.',
               ephemeral: true
             });
             return;
           }
           
-          character = npc;
-          isNPC = true;
+          actingCharacter = npc;
         }
       }
-      
-      if (!character) {
-        await interaction.reply({
-          content: `❌ Character/NPC "${characterName}" not found. Use autocomplete to see available options.`,
-          ephemeral: true
-        });
-        return;
-      }
-    } else {
-      // Use active character
-      character = await prismaCharacterManager.getUserActiveCharacter(userId);
-      if (!character) {
-        await interaction.reply({
-          content: '❌ No active character found. Please specify a character or create one with `/sheet create`.\n\n💡 **Tip:** Use the character autocomplete to see available characters.',
-          ephemeral: true
-        });
-        return;
-      }
+    }
+
+    if (!actingCharacter) {
+      actingCharacter = character;
     }
 
     // Get skill and drive values from character
     let skillValue = 8; // Default
     let driveValue = 8; // Default
     
-    if (isNPC) {
-      // For NPCs, use simplified logic
-      const npc = character as any; // NPC type
-      if (npc.skills) {
-        const skill = npc.skills.find((s: any) => s.name.toLowerCase() === skillName.toLowerCase());
-        skillValue = skill?.value || 8;
-      }
-      // NPCs don't have drives in the same way, use base value
-      driveValue = 8;
-    } else {
-      // For player characters
-      const pc = character as any; // DuneCharacter type
-      const skill = pc.skills?.find((s: any) => s.name.toLowerCase() === skillName.toLowerCase());
-      const drive = pc.drives?.find((d: any) => d.name.toLowerCase() === driveName.toLowerCase());
-      
+    if (actingCharacter.skills) {
+      const skill = actingCharacter.skills.find((s: any) => s.name.toLowerCase() === skillName.toLowerCase());
       skillValue = skill?.value || 8;
+    }
+    
+    if (actingCharacter.drives) {
+      const drive = actingCharacter.drives.find((d: any) => d.name.toLowerCase() === driveName.toLowerCase());
       driveValue = drive?.value || 8;
     }
 
@@ -239,12 +203,12 @@ export async function handleDuneRollCommand(interaction: ChatInputCommandInterac
 
     // Get current momentum pool
     const channelId = interaction.channelId;
-    const momentumPool = await dataManager.getMomentumPool(guildId, channelId);
+    const momentumPool = await dataManager.getMomentumPool(channelId);
 
     // Create response embed
     const embed = createImprovedDuneEmbed(
       result, 
-      character, 
+      actingCharacter, 
       skillName, 
       driveName, 
       skillValue,
@@ -254,7 +218,7 @@ export async function handleDuneRollCommand(interaction: ChatInputCommandInterac
       bonus, 
       description || undefined, 
       interaction.user,
-      isNPC
+      actingCharacter.type === 'npc'
     );
 
     // Add momentum pool info
@@ -273,7 +237,7 @@ export async function handleDuneRollCommand(interaction: ChatInputCommandInterac
         const excessSuccesses = result.successes - difficulty;
         row.addComponents(
           new ButtonBuilder()
-            .setCustomId(`generate_momentum_${guildId}_${channelId}_${excessSuccesses}`)
+            .setCustomId(`generate_momentum_${channelId}_${excessSuccesses}`)
             .setLabel(`Generate Momentum (+${excessSuccesses})`)
             .setStyle(ButtonStyle.Success)
             .setEmoji('✨')
@@ -283,7 +247,7 @@ export async function handleDuneRollCommand(interaction: ChatInputCommandInterac
       if (momentumPool.momentum > 0) {
         row.addComponents(
           new ButtonBuilder()
-            .setCustomId(`spend_momentum_${guildId}_${channelId}`)
+            .setCustomId(`spend_momentum_${channelId}`)
             .setLabel('Spend Momentum')
             .setStyle(ButtonStyle.Primary)
             .setEmoji('💫')
@@ -293,7 +257,7 @@ export async function handleDuneRollCommand(interaction: ChatInputCommandInterac
       if (result.complications > 0) {
         row.addComponents(
           new ButtonBuilder()
-            .setCustomId(`add_threat_${guildId}_${channelId}_${result.complications}`)
+            .setCustomId(`add_threat_${channelId}_${result.complications}`)
             .setLabel(`Add Threat (+${result.complications})`)
             .setStyle(ButtonStyle.Danger)
             .setEmoji('⚠️')
@@ -328,11 +292,10 @@ export async function handleMomentumCommand(interaction: ChatInputCommandInterac
   try {
     const options = interaction.options;
     const action = (options.get('action')?.value as string) || 'show';
-    const guildId = interaction.guildId || '0';
     const channelId = interaction.channelId;
 
     if (action === 'show') {
-      const pool = await dataManager.getMomentumPool(guildId, channelId);
+      const pool = await dataManager.getMomentumPool(channelId);
       const embed = new EmbedBuilder()
         .setTitle('💫 Momentum & Threat Pools')
         .setColor('#0099ff')
@@ -345,7 +308,7 @@ export async function handleMomentumCommand(interaction: ChatInputCommandInterac
       await interaction.reply({ embeds: [embed] });
 
     } else if (action === 'reset') {
-      await dataManager.resetMomentumPool(guildId, channelId);
+      await dataManager.resetMomentumPool(channelId);
       const embed = new EmbedBuilder()
         .setTitle('💫 Pools Reset')
         .setDescription('Momentum and Threat pools have been reset to 0.')
@@ -424,9 +387,9 @@ export async function handleDuneHelpCommand(interaction: CommandInteraction): Pr
 
 export async function handleDuneMomentumButton(interaction: ButtonInteraction): Promise<void> {
   try {
-    const [action, guildId, channelId, amount] = interaction.customId.split('_').slice(1);
+    const [action, channelId, amount] = interaction.customId.split('_').slice(1);
 
-    if (!action || !guildId || !channelId) {
+    if (!action || !channelId) {
       await interaction.reply({ content: '❌ Invalid button interaction.', ephemeral: true });
       return;
     }
@@ -437,7 +400,7 @@ export async function handleDuneMomentumButton(interaction: ButtonInteraction): 
     switch (action) {
       case 'spend':
         if (action === 'spend' && interaction.customId.includes('momentum')) {
-          pool = await dataManager.updateMomentum(guildId, channelId, -1, 0);
+          pool = await dataManager.updateMomentum(channelId, -1, 0);
           embed = new EmbedBuilder()
             .setTitle('💫 Momentum Spent')
             .setDescription('1 Momentum spent for additional effect')
@@ -452,7 +415,7 @@ export async function handleDuneMomentumButton(interaction: ButtonInteraction): 
       case 'add':
         if (action === 'add' && interaction.customId.includes('threat')) {
           const threatToAdd = parseInt(amount || '1', 10);
-          pool = await dataManager.updateMomentum(guildId, channelId, 0, threatToAdd);
+          pool = await dataManager.updateMomentum(channelId, 0, threatToAdd);
           embed = new EmbedBuilder()
             .setTitle('⚠️ Threat Added')
             .setDescription(`${threatToAdd} Threat added from complications`)
@@ -467,7 +430,7 @@ export async function handleDuneMomentumButton(interaction: ButtonInteraction): 
       case 'generate':
         if (action === 'generate' && interaction.customId.includes('momentum')) {
           const momentumToAdd = parseInt(amount || '1', 10);
-          pool = await dataManager.updateMomentum(guildId, channelId, momentumToAdd, 0);
+          pool = await dataManager.updateMomentum(channelId, momentumToAdd, 0);
           embed = new EmbedBuilder()
             .setTitle('✨ Momentum Generated')
             .setDescription(`${momentumToAdd} Momentum generated from excess successes`)
@@ -641,20 +604,19 @@ export async function autocomplete(interaction: AutocompleteInteraction) {
   const focusedOption = interaction.options.getFocused(true);
   
   if (focusedOption.name === 'character') {
-    const guildId = interaction.guildId!;
     const userId = interaction.user.id;
     
     try {
       // Get user's characters
       const userCharacters = await prismaCharacterManager.getUserCharacters(userId);
       
-      // Get guild NPCs
-      const guildNPCs = await prismaCharacterManager.getGuildNPCs(guildId);
+      // Get all NPCs globally
+      const allNPCs = await prismaCharacterManager.getAllNPCs();
       
       // Combine and filter based on input
       const allOptions = [
-        ...userCharacters.map((char: any) => ({ name: `${char.name} (Character)`, value: char.name })),
-        ...guildNPCs.map((npc: any) => ({ name: `${npc.name} (NPC)`, value: npc.name }))
+        ...userCharacters.map((char: any) => ({ name: char.name, value: char.name })),
+        ...allNPCs.map((npc: any) => ({ name: `${npc.name} (NPC)`, value: npc.name }))
       ];
       
       const filtered = allOptions.filter(option => 

@@ -208,21 +208,18 @@ model NpcDrive {
 
 model MomentumPool {
   id          String   @id @default(uuid())
-  guildId     String   @map("guild_id")
-  channelId   String   @map("channel_id")
+  channelId   String   @unique @map("channel_id")
   momentum    Int      @default(0)
   threat      Int      @default(0)
   lastUpdated DateTime @updatedAt @map("last_updated")
   
-  @@unique([guildId, channelId])
-  @@index([guildId, channelId])
+  @@index([channelId])
   @@map("momentum_pools")
 }
 
 model CharacterCreationSession {
   id            String   @id @default(uuid())
-  userId        String   @map("user_id")
-  guildId       String   @map("guild_id")
+  userId        String   @unique @map("user_id")
   currentStep   String   @map("current_step")
   characterData Json     @default("{}") @map("character_data")
   tempData      Json     @default("{}") @map("temp_data")
@@ -230,8 +227,7 @@ model CharacterCreationSession {
   channelId     String?  @map("channel_id")
   lastUpdated   DateTime @updatedAt @map("last_updated")
   
-  @@unique([userId, guildId])
-  @@index([userId, guildId])
+  @@index([userId])
   @@index([lastUpdated])
   @@map("character_creation_sessions")
 }

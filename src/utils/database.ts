@@ -8,7 +8,6 @@ import { logger } from './logger';
 import { config } from '../config';
 
 export interface MomentumPool {
-  guildId: string;
   channelId: string;
   momentum: number;
   threat: number;
@@ -93,19 +92,17 @@ export class DataManager {
   }
 
   /**
-   * Get momentum pool for a specific guild/channel
+   * Get momentum pool for a specific channel
    */
-  async getMomentumPool(guildId: string, channelId: string): Promise<MomentumPool> {
+  async getMomentumPool(channelId: string): Promise<MomentumPool> {
     const pools = await this.loadJson<Record<string, MomentumPool>>('momentum_pools.json') || {};
-    const key = `${guildId}_${channelId}`;
     
-    if (pools[key]) {
-      return pools[key];
+    if (pools[channelId]) {
+      return pools[channelId];
     }
 
     // Create new pool
     return {
-      guildId,
       channelId,
       momentum: 0,
       threat: 0,
@@ -118,10 +115,9 @@ export class DataManager {
    */
   async saveMomentumPool(pool: MomentumPool): Promise<void> {
     const pools = await this.loadJson<Record<string, MomentumPool>>('momentum_pools.json') || {};
-    const key = `${pool.guildId}_${pool.channelId}`;
     
     pool.lastUpdated = new Date().toISOString();
-    pools[key] = pool;
+    pools[pool.channelId] = pool;
     
     await this.saveJson('momentum_pools.json', pools);
   }
@@ -130,12 +126,11 @@ export class DataManager {
    * Update momentum and threat values
    */
   async updateMomentum(
-    guildId: string, 
     channelId: string, 
     momentumChange: number = 0, 
     threatChange: number = 0
   ): Promise<MomentumPool> {
-    const pool = await this.getMomentumPool(guildId, channelId);
+    const pool = await this.getMomentumPool(channelId);
     
     pool.momentum = Math.max(0, pool.momentum + momentumChange);
     pool.threat = Math.max(0, pool.threat + threatChange);
@@ -147,9 +142,8 @@ export class DataManager {
   /**
    * Reset momentum pool to zero
    */
-  async resetMomentumPool(guildId: string, channelId: string): Promise<MomentumPool> {
+  async resetMomentumPool(channelId: string): Promise<MomentumPool> {
     const pool: MomentumPool = {
-      guildId,
       channelId,
       momentum: 0,
       threat: 0,
@@ -161,19 +155,11 @@ export class DataManager {
   }
 
   /**
-   * Get all momentum pools for a guild
+   * Get all momentum pools
    */
-  async getAllMomentumPools(guildId: string): Promise<Record<string, MomentumPool>> {
+  async getAllMomentumPools(): Promise<Record<string, MomentumPool>> {
     const pools = await this.loadJson<Record<string, MomentumPool>>('momentum_pools.json') || {};
-    const guildPools: Record<string, MomentumPool> = {};
-    
-    for (const [, pool] of Object.entries(pools)) {
-      if (pool.guildId === guildId) {
-        guildPools[pool.channelId] = pool;
-      }
-    }
-    
-    return guildPools;
+    return pools;
   }
 
   /**
@@ -182,17 +168,15 @@ export class DataManager {
   /**
    * Save bot settings/configuration
    */
-  async saveBotSettings(guildId: string, settings: Record<string, unknown>): Promise<void> {
-    const allSettings = await this.loadJson<Record<string, unknown>>('bot_settings.json') || {};
-    allSettings[guildId] = settings;
-    await this.saveJson('bot_settings.json', allSettings);
+  async saveBotSettings(settings: Record<string, unknown>): Promise<void> {
+    await this.saveJson('bot_settings.json', settings);
   }
 
   /**
-   * Load bot settings for a guild
+   * Load bot settings
    */
-  async loadBotSettings(guildId: string): Promise<Record<string, unknown>> {
-    const allSettings = await this.loadJson<Record<string, Record<string, unknown>>>('bot_settings.json') || {};
-    return allSettings[guildId] || {};
+  async loadBotSettings(): Promise<Record<string, unknown>> {
+    const settings = await this.loadJson<Record<string, unknown>>('bot_settings.json') || {};
+    return settings;
   }
 }
