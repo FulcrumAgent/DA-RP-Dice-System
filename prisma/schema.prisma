@@ -1,0 +1,253 @@
+// Prisma Schema for Dune/DA-RP Dice System Discord Bot
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Character {
+  id       String @id @default(uuid())
+  userId   String @map("user_id") // Discord user ID
+  name     String
+  concepts String[] @default([])
+  house    String?
+  homeworld String?
+  avatarUrl String? @map("avatar_url")
+  
+  // Core Attributes
+  attrMuscle        Int @default(8) @map("attr_muscle")
+  attrMove          Int @default(8) @map("attr_move")
+  attrIntellect     Int @default(8) @map("attr_intellect")
+  attrAwareness     Int @default(8) @map("attr_awareness")
+  attrCommunication Int @default(8) @map("attr_communication")
+  attrDiscipline    Int @default(8) @map("attr_discipline")
+  
+  // Resources
+  determination    Int @default(0)
+  maxDetermination Int @default(0) @map("max_determination")
+  
+  // Experience
+  expTotal     Int @default(0) @map("exp_total")
+  expSpent     Int @default(0) @map("exp_spent")
+  expAvailable Int @default(0) @map("exp_available")
+  
+  // Metadata
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  lastUpdated DateTime @updatedAt @map("last_updated")
+  
+  // Relations
+  skills CharacterSkill[]
+  drives CharacterDrive[]
+  assets CharacterAsset[]
+  traits CharacterTrait[]
+  
+  @@unique([userId, name])
+  @@index([userId])
+  @@index([isActive])
+  @@index([lastUpdated])
+  @@map("characters")
+}
+
+model CharacterSkill {
+  id          String   @id @default(uuid())
+  characterId String   @map("character_id")
+  name        String
+  value       Int      @default(0)
+  focus       String[] @default([])
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  
+  @@unique([characterId, name])
+  @@index([characterId])
+  @@map("character_skills")
+}
+
+model CharacterDrive {
+  id          String   @id @default(uuid())
+  characterId String   @map("character_id")
+  name        String
+  statement   String
+  value       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  
+  @@unique([characterId, name])
+  @@index([characterId])
+  @@map("character_drives")
+}
+
+model CharacterAsset {
+  id          String   @id @default(uuid())
+  characterId String   @map("character_id")
+  name        String
+  type        AssetType
+  description String?
+  qualities   String[] @default([])
+  cost        Int?
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  
+  @@index([characterId])
+  @@index([type])
+  @@map("character_assets")
+}
+
+model CharacterTrait {
+  id          String    @id @default(uuid())
+  characterId String    @map("character_id")
+  name        String
+  type        TraitType
+  description String?
+  mechanical  String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  
+  @@index([characterId])
+  @@index([type])
+  @@map("character_traits")
+}
+
+model Npc {
+  id          String   @id @default(uuid())
+  name        String
+  concepts    String[] @default([])
+  description String?
+  tier        NpcTier?
+  avatarUrl   String?  @map("avatar_url")
+  
+  // Simplified attributes (can be partial)
+  attrMuscle        Int? @map("attr_muscle")
+  attrMove          Int? @map("attr_move")
+  attrIntellect     Int? @map("attr_intellect")
+  attrAwareness     Int? @map("attr_awareness")
+  attrCommunication Int? @map("attr_communication")
+  attrDiscipline    Int? @map("attr_discipline")
+  
+  // Metadata
+  createdBy String   @map("created_by") // Discord user ID
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  skills NpcSkill[]
+  assets NpcAsset[]
+  traits NpcTrait[]
+  drives NpcDrive[]
+  
+  @@index([createdBy])
+  @@index([tier])
+  @@map("npcs")
+}
+
+model NpcSkill {
+  id    String   @id @default(uuid())
+  npcId String   @map("npc_id")
+  name  String
+  value Int      @default(0)
+  focus String[] @default([])
+  
+  npc Npc @relation(fields: [npcId], references: [id], onDelete: Cascade)
+  
+  @@unique([npcId, name])
+  @@index([npcId])
+  @@map("npc_skills")
+}
+
+model NpcAsset {
+  id          String    @id @default(uuid())
+  npcId       String    @map("npc_id")
+  name        String
+  type        AssetType
+  description String?
+  qualities   String[]  @default([])
+  cost        Int?
+  
+  npc Npc @relation(fields: [npcId], references: [id], onDelete: Cascade)
+  
+  @@index([npcId])
+  @@map("npc_assets")
+}
+
+model NpcTrait {
+  id          String    @id @default(uuid())
+  npcId       String    @map("npc_id")
+  name        String
+  type        TraitType
+  description String?
+  mechanical  String?
+  
+  npc Npc @relation(fields: [npcId], references: [id], onDelete: Cascade)
+  
+  @@index([npcId])
+  @@map("npc_traits")
+}
+
+model NpcDrive {
+  id        String @id @default(uuid())
+  npcId     String @map("npc_id")
+  name      String
+  statement String
+  value     Int    @default(0)
+  
+  npc Npc @relation(fields: [npcId], references: [id], onDelete: Cascade)
+  
+  @@unique([npcId, name])
+  @@index([npcId])
+  @@map("npc_drives")
+}
+
+model MomentumPool {
+  id          String   @id @default(uuid())
+  channelId   String   @unique @map("channel_id")
+  momentum    Int      @default(0)
+  threat      Int      @default(0)
+  lastUpdated DateTime @updatedAt @map("last_updated")
+  
+  @@index([channelId])
+  @@map("momentum_pools")
+}
+
+model CharacterCreationSession {
+  id            String   @id @default(uuid())
+  userId        String   @unique @map("user_id")
+  currentStep   String   @map("current_step")
+  characterData Json     @default("{}") @map("character_data")
+  tempData      Json     @default("{}") @map("temp_data")
+  messageId     String?  @map("message_id")
+  channelId     String?  @map("channel_id")
+  lastUpdated   DateTime @updatedAt @map("last_updated")
+  
+  @@index([userId])
+  @@index([lastUpdated])
+  @@map("character_creation_sessions")
+}
+
+// Enums
+enum AssetType {
+  talent
+  equipment
+  contact
+  reputation
+}
+
+enum TraitType {
+  flaw
+  quirk
+  background
+}
+
+enum NpcTier {
+  minion
+  toughened
+  nemesis
+}

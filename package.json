@@ -1,0 +1,63 @@
+{
+  "name": "dune-discord-bot",
+  "version": "1.0.0",
+  "description": "A modular Discord bot for Dune: Adventures in the Imperium RPG community with Extra-Life integration",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "node ./node_modules/typescript/bin/tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "dev:watch": "ts-node --watch src/index.ts",
+    "clean": "node -e \"require('fs').rmSync('dist', {recursive: true, force: true})\"",
+    "prebuild": "npm run clean",
+    "postbuild": "echo \"Build completed successfully!\"",
+    "postinstall": "prisma generate",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "deploy": "npm run build && npm start",
+    "deploy-global": "npm run build && node dist/deploy-commands-global.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "dune",
+    "rpg",
+    "dice",
+    "2d20",
+    "extra-life",
+    "charity"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "@prisma/client": "^5.7.1",
+    "axios": "^1.6.2",
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1",
+    "lru-cache": "^10.1.0",
+    "node-cron": "^3.0.3",
+    "uuid": "^9.0.1",
+    "winston": "^3.11.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.4",
+    "@types/node-cron": "^3.0.11",
+    "@types/uuid": "^9.0.7",
+    "@typescript-eslint/eslint-plugin": "^6.13.2",
+    "@typescript-eslint/parser": "^6.13.2",
+    "eslint": "^8.55.0",
+    "nodemon": "^3.0.2",
+    "prisma": "^5.7.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
