@@ -1293,16 +1293,15 @@ class DuneBot {
 
   private async handleGenerateMomentumButton(interaction: ButtonInteraction): Promise<void> {
     try {
-      // Parse the custom ID to extract guild, channel, and momentum amount
-      // Format: generate_momentum_{guildId}_{channelId}_{amount}
+      // Parse the custom ID to extract channel and momentum amount
+      // Format: generate_momentum_{channelId}_{amount}
       const parts = interaction.customId.split('_');
-      if (parts.length < 5) {
+      if (parts.length < 4) {
         throw new Error('Invalid button ID format');
       }
       
-      const guildId = parts[2];
-      const channelId = parts[3];
-      const momentumAmount = parseInt(parts[4]);
+      const channelId = parts[2];
+      const momentumAmount = parseInt(parts[3]);
       
       if (isNaN(momentumAmount) || momentumAmount <= 0) {
         throw new Error('Invalid momentum amount');
@@ -1328,15 +1327,14 @@ class DuneBot {
 
   private async handleSpendMomentumButton(interaction: ButtonInteraction): Promise<void> {
     try {
-      // Parse the custom ID to extract guild and channel
-      // Format: spend_momentum_{guildId}_{channelId}
+      // Parse the custom ID to extract channel
+      // Format: spend_momentum_{channelId}
       const parts = interaction.customId.split('_');
-      if (parts.length < 4) {
+      if (parts.length < 3) {
         throw new Error('Invalid button ID format');
       }
       
-      const guildId = parts[2];
-      const channelId = parts[3];
+      const channelId = parts[2];
       
       // Get current momentum pool
       const database = new DataManager();
@@ -1357,7 +1355,7 @@ class DuneBot {
       for (let i = 1; i <= maxSpend; i++) {
         row.addComponents(
           new ButtonBuilder()
-            .setCustomId(`confirm_spend_momentum_${guildId}_${channelId}_${i}`)
+            .setCustomId(`confirm_spend_momentum_${channelId}_${i}`)
             .setLabel(`Spend ${i}`)
             .setStyle(ButtonStyle.Primary)
             .setEmoji('💫')
@@ -1381,16 +1379,15 @@ class DuneBot {
 
   private async handleAddThreatButton(interaction: ButtonInteraction): Promise<void> {
     try {
-      // Parse the custom ID to extract guild, channel, and threat amount
-      // Format: add_threat_{guildId}_{channelId}_{amount}
+      // Parse the custom ID to extract channel and threat amount
+      // Format: add_threat_{channelId}_{amount}
       const parts = interaction.customId.split('_');
-      if (parts.length < 5) {
+      if (parts.length < 4) {
         throw new Error('Invalid button ID format');
       }
       
-      const guildId = parts[2];
-      const channelId = parts[3];
-      const threatAmount = parseInt(parts[4]);
+      const channelId = parts[2];
+      const threatAmount = parseInt(parts[3]);
       
       if (isNaN(threatAmount) || threatAmount <= 0) {
         throw new Error('Invalid threat amount');
@@ -1416,9 +1413,9 @@ class DuneBot {
 
   private async handleConfirmSpendMomentumButton(interaction: ButtonInteraction) {
     try {
-      // Parse button custom ID: confirm_spend_momentum_{guildId}_{channelId}_{amount}
+      // Parse button custom ID: confirm_spend_momentum_{channelId}_{amount}
       const parts = interaction.customId.split('_');
-      if (parts.length !== 6) {
+      if (parts.length !== 5) {
         await interaction.reply({
           content: '❌ Invalid button format.',
           flags: MessageFlags.Ephemeral
@@ -1426,9 +1423,8 @@ class DuneBot {
         return;
       }
 
-      const guildId = parts[3];
-      const channelId = parts[4];
-      const spendAmount = parseInt(parts[5]);
+      const channelId = parts[3];
+      const spendAmount = parseInt(parts[4]);
 
       if (isNaN(spendAmount) || spendAmount <= 0) {
         await interaction.reply({
