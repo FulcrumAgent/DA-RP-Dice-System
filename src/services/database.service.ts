@@ -177,54 +177,29 @@ export class DatabaseService {
   }
 
   /**
-   * Get character creation session by user ID
+   * Get character creation session by user ID (DISABLED - CharacterCreationSession model removed)
    */
-  async getCharacterCreationSession(userId: string, guildId: string): Promise<any | null> {
-    try {
-      const session = await this.prisma.characterCreationSession.findFirst({
-        where: { userId, guildId }
-      });
-      return session;
-    } catch (error) {
-      logger.error('Failed to get character creation session:', error);
-      throw error;
-    }
+  async getCharacterCreationSession(userId: string): Promise<any | null> {
+    // This method is disabled as CharacterCreationSession model was removed during guild unification
+    logger.warn('getCharacterCreationSession called but CharacterCreationSession model no longer exists');
+    throw new Error('CharacterCreationSession functionality has been removed during database unification');
   }
 
   /**
-   * Update character creation session
+   * Update character creation session (DISABLED - CharacterCreationSession model removed)
    */
   async updateCharacterCreationSession(sessionId: string, updates: any): Promise<any> {
-    try {
-      const session = await this.prisma.characterCreationSession.update({
-        where: { id: sessionId },
-        data: {
-          ...updates,
-          lastUpdated: new Date()
-        }
-      });
-      
-      logger.info(`Updated character creation session ${sessionId}`);
-      return session;
-    } catch (error) {
-      logger.error('Failed to update character creation session:', error);
-      throw error;
-    }
+    // This method is disabled as CharacterCreationSession model was removed during guild unification
+    logger.warn('updateCharacterCreationSession called but CharacterCreationSession model no longer exists');
+    throw new Error('CharacterCreationSession functionality has been removed during database unification');
   }
 
   /**
-   * Delete character creation session
+   * Delete character creation session (DISABLED - CharacterCreationSession model removed)
    */
   async deleteCharacterCreationSession(sessionId: string): Promise<void> {
-    try {
-      await this.prisma.characterCreationSession.delete({
-        where: { id: sessionId }
-      });
-      
-      logger.info(`Deleted character creation session ${sessionId}`);
-    } catch (error) {
-      logger.error('Failed to delete character creation session:', error);
-      throw error;
-    }
+    // This method is disabled as CharacterCreationSession model was removed during guild unification
+    logger.warn('deleteCharacterCreationSession called but CharacterCreationSession model no longer exists');
+    throw new Error('CharacterCreationSession functionality has been removed during database unification');
   }
 }
